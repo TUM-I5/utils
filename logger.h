@@ -35,7 +35,11 @@
 #endif // DEBUG_PRFIX
 
 #ifndef LOG_ABORT
+#ifdef MPI_VERSION
+#define LOG_ABORT MPI_Abort(MPI_COMM_WORLD, -1)
+#else // MPI_VERSION
 #define LOG_ABORT abort()
+#endif // MPI_VERSION
 #endif // LOG_ABORT
 
 /**
