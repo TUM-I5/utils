@@ -21,7 +21,7 @@
 #include <sstream>
 #include <vector>
 
-namespace tools
+namespace utils
 {
 
 /**
@@ -296,7 +296,7 @@ private:
 };
 
 template<> inline
-std::string tools::Args::getArgument(const std::string &option)
+std::string utils::Args::getArgument(const std::string &option)
 {
 	return m_arguments.at(option);
 }
