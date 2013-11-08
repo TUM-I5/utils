@@ -26,6 +26,7 @@ namespace utils
 
 /**
  * Parses command line arguments
+ * @todo comment functions
  */
 class Args
 {
@@ -34,6 +35,12 @@ private:
 		std::string longOption;		// We need a copy here to get the const char* correct
 		/** Name of the value in the help command */
 		std::string value;
+		std::string description;
+		bool required;
+	};
+
+	struct additionalOptionInfo {
+		std::string name;
 		std::string description;
 		bool required;
 	};
@@ -66,11 +73,19 @@ private:
 	 */
 	std::vector<optionInfo> m_optionInfo;
 
+	std::vector<additionalOptionInfo> m_additionalOptionInfo;
+
 	/** Maps from short option to index in m_options */
 	std::map<char, size_t> m_short2option;
 
 	/** Contains the arguments after parse was called */
 	std::map<std::string, std::string> m_arguments;
+
+	/**
+	 * Contains additional arguments after parse was called
+	 * @todo Find a better name
+	 */
+	std::map<std::string, std::string> m_additionalArguments;
 
 public:
 	enum Argument
@@ -97,7 +112,7 @@ public:
 
 	void addOption(const std::string &longOption,
 			char shortOption = 0,
-			const std::string& description = "",
+			const std::string &description = "",
 			Argument argument = Required,
 			bool required = true)
 	{
@@ -116,6 +131,20 @@ public:
 
 		struct option o = {m_optionInfo.back().longOption.c_str(), argument, 0, shortOption};
 		m_options.push_back(o);
+	}
+
+	void addAdditionalOption(const std::string &name,
+			const std::string &description = "",
+			bool required = true)
+	{
+		if (!m_additionalOptionInfo.empty()) {
+			if (required && !m_additionalOptionInfo.back().required)
+				// After one optional argument there can only be more optional arguments
+				return;
+		}
+
+		struct additionalOptionInfo i = {name, description, required};
+		m_additionalOptionInfo.push_back(i);
 	}
 
 	/**
@@ -191,12 +220,31 @@ public:
 			}
 		}
 
+		// Parse additional options and check if all required options are set
+		int i;
+		for (i = 0; i < argc-optind; i++)
+			m_additionalArguments[m_additionalOptionInfo[i].name] = argv[i+optind];
+		if (static_cast<size_t>(i) < m_additionalOptionInfo.size()) {
+			if (m_additionalOptionInfo[i].required) {
+				if (printHelp) {
+					std::cerr << argv[0] << ": option <" << m_additionalOptionInfo[i].name << "> is required" << std::endl;
+					helpMessage(argv[0], std::cerr);
+				}
+				return Error;
+			}
+		}
+
 		return Success;
 	}
 
-	bool isSet(const std::string &option)
+	bool isSet(const std::string &option) const
 	{
 		return m_arguments.find(option) != m_arguments.end();
+	}
+
+	bool isSetAdditional(const std::string &option) const
+	{
+		return m_additionalArguments.find(option) != m_additionalArguments.end();
 	}
 
 	template<typename T>
@@ -219,6 +267,27 @@ public:
 		return getArgument<T>(option);
 	}
 
+
+	template<typename T>
+	T getAdditionalArgument(const std::string &option)
+	{
+		std::istringstream ss(m_additionalArguments.at(option));
+
+		T result;
+		ss >> result;
+
+		return result;
+	}
+
+	template<typename T>
+	T getAdditionalArgument(const std::string &option, T defaultArgument)
+	{
+		if (!isSetAdditional(option))
+			return defaultArgument;
+
+		return getAdditionalArgument<T>(option);
+	}
+
 	void helpMessage(const char* prog, std::ostream &out = std::cout)
 	{
 		// First line with all short options
@@ -239,11 +308,40 @@ public:
 			if (!m_optionInfo[i].required)
 				out << ']';
 		}
+		for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
+			out << ' ';
+
+			if (!m_additionalOptionInfo[i].required)
+				out << '[';
+
+			out << '<' << m_additionalOptionInfo[i].name << '>';
+
+			if (!m_additionalOptionInfo[i].required)
+				out << ']';
+
+		}
 		out << std::endl;
 
 		// General program description
 		if (!m_description.empty())
 			out << std::endl << m_description << std::endl;
+
+		// Arguments
+		out << std::endl << "arguments:" << std::endl;
+		for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
+			out << "  <" << m_additionalOptionInfo[i].name << '>';
+
+			// Number of characters used for the option
+			size_t length = 4 + m_additionalOptionInfo[i].name.size();
+
+			if (length >= 30) {
+				out << std::endl;
+				out << std::setw(30) << ' ';
+			} else
+				out << std::setw(30-length) << ' ';
+
+			out << m_additionalOptionInfo[i].description << std::endl;
+		}
 
 		// Optional arguments
 		out << std::endl << "optional arguments:" << std::endl;
@@ -299,6 +397,12 @@ template<> inline
 std::string utils::Args::getArgument(const std::string &option)
 {
 	return m_arguments.at(option);
+}
+
+template<> inline
+std::string utils::Args::getAdditionalArgument(const std::string &option)
+{
+	return m_additionalArguments.at(option);
 }
 
 }
