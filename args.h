@@ -405,6 +405,15 @@ std::string utils::Args::getArgument(const std::string &option)
 }
 
 template<> inline
+bool utils::Args::getArgument(const std::string &option, bool defaultArgument)
+{
+	if (!isSet(option))
+		return defaultArgument;
+
+	return !defaultArgument;
+}
+
+template<> inline
 std::string utils::Args::getAdditionalArgument(const std::string &option)
 {
 	return m_additionalArguments.at(option);
