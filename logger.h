@@ -6,7 +6,7 @@
  *  notice in the file 'COPYING' at the root directory of this package
  *  and the copyright notice at https://github.com/TUM-I5/utils
  *
- * @copyright 2013 Technische Universitaet Muenchen
+ * @copyright 2013-2014 Technische Universitaet Muenchen
  * @author Sebastian Rettenberger <rettenbs@in.tum.de>
  */
 
@@ -221,7 +221,37 @@ public:
 		stream->buffer << func;
 		return *this; // No space in this case
 	}
+
+	/**
+	 * Operator for enabling/disabling automatic spacing
+	 */
+	Logger &operator<<(Logger& (*func)(Logger&))
+	{
+		func(*this);
+		return *this;
+	}
 };
+
+/**
+ * Function to activate automatic spacing
+ *
+ * Example:
+ * <code>logInfo() << nospace() << x << ":";
+ */
+inline Logger& space(Logger &logger)
+{
+	return logger.space();
+}
+
+/**
+ * Function to deactivate automatic spacing
+ *
+ * @see space()
+ */
+inline Logger& nospace(Logger &logger)
+{
+	return logger.nospace();
+}
 
 /**
  * Dummy Logger class, does nothing
@@ -245,6 +275,15 @@ public:
 	 * Operator to add functions like std::endl
 	 */
 	NoLogger &operator<<(std::ostream& (*func)(std::ostream&))
+	{
+		return *this;
+	}
+
+	/**
+	 * Operator for enabling/disabling automatic spacing
+	 * (the operator itself is ignored)
+	 */
+	NoLogger &operator<<(Logger& (*func)(Logger&))
 	{
 		return *this;
 	}
