@@ -9,4 +9,4 @@ Documentation
 License
 -------
 
-UTILS is released under TUM-BSD (see [COPYING](COPYING))
+UTILS is released under LGPL (see [COPYING](COPYING))
