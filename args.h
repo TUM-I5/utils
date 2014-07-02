@@ -22,6 +22,8 @@
 #ifndef UTILS_ARGS_H
 #define UTILS_ARGS_H
 
+#include "utils/stringutils.h"
+
 #include <getopt.h>
 #include <algorithm>
 #include <map>
@@ -264,12 +266,7 @@ public:
 	template<typename T>
 	T getArgument(const std::string &option)
 	{
-		std::istringstream ss(m_arguments.at(option));
-
-		T result;
-		ss >> result;
-
-		return result;
+		return StringUtils::parse<T>(m_arguments.at(option));
 	}
 
 	template<typename T>
@@ -285,12 +282,7 @@ public:
 	template<typename T>
 	T getAdditionalArgument(const std::string &option)
 	{
-		std::istringstream ss(m_additionalArguments.at(option));
-
-		T result;
-		ss >> result;
-
-		return result;
+		return StringUtils::parse<T>(m_additionalArguments.at(option));
 	}
 
 	template<typename T>
@@ -408,24 +400,12 @@ private:
 };
 
 template<> inline
-std::string utils::Args::getArgument(const std::string &option)
-{
-	return m_arguments.at(option);
-}
-
-template<> inline
 bool utils::Args::getArgument(const std::string &option, bool defaultArgument)
 {
 	if (!isSet(option))
 		return defaultArgument;
 
 	return !defaultArgument;
-}
-
-template<> inline
-std::string utils::Args::getAdditionalArgument(const std::string &option)
-{
-	return m_additionalArguments.at(option);
 }
 
 }

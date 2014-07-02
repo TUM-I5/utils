@@ -68,6 +68,18 @@ public:
 	}
 
 	/**
+	 * Converts strings to arbitrary datatypes (using the << stream operator)
+	 */
+	template<typename T>
+	static T parse(const std::string &str)
+	{
+		T result;
+		std::istringstream(str) >> result;
+
+		return result;
+	}
+
+	/**
 	 * Converts null terminated string to upper case
 	 */
 	static void toUpper(char* s)
@@ -114,6 +126,12 @@ public:
 	        return ltrim(rtrim(s));
 	}
 };
+
+template<> inline
+std::string StringUtils::parse(const std::string &str)
+{
+	return str;
+}
 
 }
 
