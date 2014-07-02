@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <functional>
 #include <cctype>
+#include <cstring>
 #include <locale>
 #include <sstream>
 #include <string>
@@ -64,6 +65,24 @@ public:
 		std::ostringstream ss;
 		ss << value;
 		return ss.str();
+	}
+
+	/**
+	 * Converts null terminated string to upper case
+	 */
+	static void toUpper(char* s)
+	{
+		for (size_t i = 0; s[i]; i++)
+			s[i] = toupper(s[i]);
+	}
+
+	/**
+	 * Converts null terminated string to lower case
+	 */
+	static void toLower(char* s)
+	{
+		for (size_t i = 0; s[i]; i++)
+			s[i] = tolower(s[i]);
 	}
 
 	/**
