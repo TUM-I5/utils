@@ -89,12 +89,30 @@ public:
 	}
 
 	/**
+	 * Converts std::string to upper case
+	 */
+	static void toUpper(std::string &str)
+	{
+		for (size_t i = 0;  str[i]; i++)
+			str[i] = toupper(str[i]);
+	}
+
+	/**
 	 * Converts null terminated string to lower case
 	 */
 	static void toLower(char* s)
 	{
 		for (size_t i = 0; s[i]; i++)
 			s[i] = tolower(s[i]);
+	}
+
+	/**
+	 * Converts std::string to lower case
+	 */
+	static void toLower(std::string &str)
+	{
+		for (size_t i = 0; str[i]; i++)
+			str[i] = tolower(str[i]);
 	}
 
 	/**
