@@ -185,6 +185,9 @@ public:
 	 */
 	void clear()
 	{
+		if (m_type == DISABLED)
+			return;
+
 		for (unsigned int i = 0; i < m_barSize; i++)
 			(*m_output) << ' ';
 		(*m_output) << '\r' << std::flush;
