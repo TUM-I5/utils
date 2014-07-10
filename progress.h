@@ -165,6 +165,22 @@ public:
 	}
 
 	/**
+	 * Updates the progress bar but does not change the current value
+	 */
+	void update()
+	{
+		update(m_current);
+	}
+
+	/**
+	 * Updates the progress bar and increments it by one
+	 */
+	void increment()
+	{
+		update(m_current + 1);
+	}
+
+	/**
 	 * Removes the progress bar from the output
 	 */
 	void clear()
