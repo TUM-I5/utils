@@ -143,6 +143,23 @@ public:
 	static std::string &trim(std::string &s) {
 	        return ltrim(rtrim(s));
 	}
+
+	/**
+	 * Join vector
+	 *
+	 * Taken from http://dracoater.blogspot.com/2010/03/joining-vector-and-splitting-string-in.html
+	 */
+	template<typename T>
+	static std::string join(const std::vector<T> &v, const std::string &token) {
+		std::ostringstream result;
+		for (typename std::vector<T>::const_iterator i = v.begin(); i != v.end(); i++){
+			if (i != v.begin())
+				result << token;
+			result << *i;
+		}
+
+		return result.str();
+	}
 };
 
 template<> inline

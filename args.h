@@ -44,6 +44,8 @@ class Args
 {
 private:
 	struct optionInfo {
+		/** Leave empty if this not an enum option */
+		std::vector<std::string> enumValues;
 		std::string longOption;		// We need a copy here to get the const char* correct
 		/** Name of the value in the help command */
 		std::string value;
@@ -128,21 +130,27 @@ public:
 			Argument argument = Required,
 			bool required = true)
 	{
-		std::string value;
+		addOptionInternal(longOption, shortOption, description, argument, required);
+	}
 
-		if (shortOption)
-			m_short2option[shortOption] = m_options.size();
+	/**
+	 * @param enumValues Use enumStart() and enumEnd() for easy char array conversion
+	 */
+	template<size_t N>
+	void addEnumOption(const std::string &longOption,
+			const char* (&enumValues)[N],
+			char shortOption = 0,
+			const std::string &description = "",
+			bool required = true)
+	{
+		std::vector<std::string> values(enumValues, end(enumValues));
 
-		if (argument != No) {
-			value = longOption;
-			for_each(value.begin(), value.end(), valueConvert());
-		}
+		std::string value = "{" + StringUtils::join(values, "|") + "}";
 
-		struct optionInfo i = {longOption, value, description, required};
-		m_optionInfo.push_back(i);
+		addOptionInternal(longOption, shortOption, description, Required, required,
+				value, values);
 
-		struct option o = {m_optionInfo.back().longOption.c_str(), argument, 0, shortOption};
-		m_options.push_back(o);
+
 	}
 
 	void addAdditionalOption(const std::string &name,
@@ -217,6 +225,18 @@ public:
 				m_arguments[m_options[optionIndex].name] = "";
 			else
 				m_arguments[m_options[optionIndex].name] = optarg;
+
+			if (!m_optionInfo[optionIndex].enumValues.empty()) {
+				if (std::find(m_optionInfo[optionIndex].enumValues.begin(),
+						m_optionInfo[optionIndex].enumValues.end(),
+						m_arguments[m_options[optionIndex].name])
+					== m_optionInfo[optionIndex].enumValues.end()) {
+					std::cerr << argv[0] << ": option --" << m_options[optionIndex].name
+							<< " must be set to " << m_optionInfo[optionIndex].value << std::endl;
+					helpMessage(argv[0], std::cerr);
+					return Error;
+				}
+			}
 		}
 
 		if (m_addHelp && isSet("help")) {
@@ -378,6 +398,33 @@ public:
 	}
 
 private:
+	void addOptionInternal(const std::string &longOption,
+			char shortOption,
+			const std::string &description,
+			Argument argument,
+			bool required,
+			const std::string &value = "",
+			const std::vector<std::string> enumValues = std::vector<std::string>())
+	{
+
+		if (shortOption)
+			m_short2option[shortOption] = m_options.size();
+
+		std::string v;
+		if (!value.empty())
+			v = value;
+		else if (argument != No) {
+			v = longOption;
+			for_each(v.begin(), v.end(), valueConvert());
+		}
+
+		struct optionInfo i = {enumValues, longOption, v, description, required};
+		m_optionInfo.push_back(i);
+
+		struct option o = {m_optionInfo.back().longOption.c_str(), argument, 0, shortOption};
+		m_options.push_back(o);
+	}
+
 	/**
 	 * Writes the argument information to out
 	 *
@@ -396,6 +443,13 @@ private:
 		}
 
 		return 0;
+	}
+
+private:
+	template<typename T, size_t N>
+	static T* end(T (&a)[N])
+	{
+		return a + N;
 	}
 };
 
