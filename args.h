@@ -227,15 +227,19 @@ public:
 				m_arguments[m_options[optionIndex].name] = optarg;
 
 			if (!m_optionInfo[optionIndex].enumValues.empty()) {
-				if (std::find(m_optionInfo[optionIndex].enumValues.begin(),
-						m_optionInfo[optionIndex].enumValues.end(),
-						m_arguments[m_options[optionIndex].name])
-					== m_optionInfo[optionIndex].enumValues.end()) {
+				std::vector<std::string>::const_iterator i =
+					std::find(m_optionInfo[optionIndex].enumValues.begin(),
+							m_optionInfo[optionIndex].enumValues.end(),
+							m_arguments[m_options[optionIndex].name]);
+				if (i == m_optionInfo[optionIndex].enumValues.end()) {
 					std::cerr << argv[0] << ": option --" << m_options[optionIndex].name
 							<< " must be set to " << m_optionInfo[optionIndex].value << std::endl;
 					helpMessage(argv[0], std::cerr);
 					return Error;
 				}
+
+				m_arguments[m_options[optionIndex].name]
+				    = StringUtils::toString(i-m_optionInfo[optionIndex].enumValues.begin());
 			}
 		}
 
@@ -297,7 +301,6 @@ public:
 
 		return getArgument<T>(option);
 	}
-
 
 	template<typename T>
 	T getAdditionalArgument(const std::string &option)
