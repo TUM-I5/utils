@@ -168,6 +168,12 @@ std::string StringUtils::parse(const std::string &str)
 	return str;
 }
 
+template<> inline
+const char* StringUtils::parse(const std::string &str)
+{
+	return str.c_str();
+}
+
 }
 
 #endif /* UTILS_STRINGUTILS_H */
