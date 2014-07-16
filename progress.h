@@ -65,7 +65,7 @@ private:
 	unsigned long m_barSize;
 
 	/** Rotation indicator position */
-	char m_rotPosition;
+	unsigned char m_rotPosition;
 
 	/** TTY handle (if used) */
 	std::ofstream m_tty;
