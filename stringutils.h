@@ -29,6 +29,7 @@
 #include <locale>
 #include <sstream>
 #include <string>
+#include <vector>
 
 /**
  * A collection of useful utility functions
