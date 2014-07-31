@@ -232,9 +232,11 @@ public:
 							m_optionInfo[optionIndex].enumValues.end(),
 							m_arguments[m_options[optionIndex].name]);
 				if (i == m_optionInfo[optionIndex].enumValues.end()) {
-					std::cerr << argv[0] << ": option --" << m_options[optionIndex].name
-							<< " must be set to " << m_optionInfo[optionIndex].value << std::endl;
-					helpMessage(argv[0], std::cerr);
+					if (printHelp) {
+						std::cerr << argv[0] << ": option --" << m_options[optionIndex].name
+								<< " must be set to " << m_optionInfo[optionIndex].value << std::endl;
+						helpMessage(argv[0], std::cerr);
+					}
 					return Error;
 				}
 
