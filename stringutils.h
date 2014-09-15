@@ -69,6 +69,17 @@ public:
 	}
 
 	/**
+	 * Checks a string for specific suffix
+	 *
+	 * Taken from: http://stackoverflow.com/questions/20446201/how-to-check-if-string-ends-with-txt
+	 */
+	static bool endsWith(const std::string &str, const std::string &suffix)
+	{
+		return str.size() >= suffix.size() &&
+				str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+	}
+
+	/**
 	 * Converts arbitrary datatypes (all datatypes which support the << stream
 	 * operator) into std::string
 	 */
