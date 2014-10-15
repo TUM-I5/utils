@@ -184,6 +184,23 @@ public:
 
 		return result.str();
 	}
+
+	/**
+	 * Split a string
+	 *
+	 * Taken from http://stackoverflow.com/questions/236129/how-to-split-a-string-in-c
+	 */
+	static std::vector<std::string> split(const std::string &str, char delim)
+	{
+		std::vector<std::string> elems;
+		std::stringstream ss(str);
+
+		std::string item;
+		while (getline(ss, item, delim))
+			elems.push_back(item);
+
+		return elems;
+	}
 };
 
 template<> inline
