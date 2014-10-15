@@ -101,6 +101,9 @@ private:
 	 */
 	std::map<std::string, std::string> m_additionalArguments;
 
+	/** Additional user-defined help message */
+	std::string m_customHelpMessage;
+
 public:
 	enum Argument
 	{
@@ -165,6 +168,14 @@ public:
 
 		struct additionalOptionInfo i = {name, description, required};
 		m_additionalOptionInfo.push_back(i);
+	}
+
+	/**
+	 * Set a help message that is added to the parameter explanation
+	 */
+	void setCustomHelpMessage(const std::string &message)
+	{
+		m_customHelpMessage = message;
 	}
 
 	/**
@@ -400,6 +411,8 @@ public:
 
 			out << m_optionInfo[i].description << std::endl;
 		}
+
+		out << m_customHelpMessage;
 	}
 
 private:
