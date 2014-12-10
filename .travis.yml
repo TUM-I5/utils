@@ -3,5 +3,22 @@ comiler:
  - gcc
  - clang
 
+before_install:
+ - sudo apt-get update -qq
+
+install:
+ - sudo apt-get install -qq doxygen graphviz
+
+env:
+ global:
+   secure: "h0CAPCRW5r5bgJACwGEml0aydaETvIb79+5R4jTaf6/oswcS4Hn6EQ8DAA+Ai6DE83R/MqG0clid239hSNwqPi6f6bgwGjNpdYD7dhA602fo0m1JRktygIc0PKeXsE81hcCER/Bdkq8U+Y3KTpchd8k/UAyB0j9UskLfMAJtkfY="
+
+branches:
+ except:
+  - gh-pages 
+
 script:
  - make
+
+after_success:
+ - cd doc && ./gh_pages.sh
