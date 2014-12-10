@@ -11,7 +11,7 @@ install:
 
 env:
  global:
-   secure: "h0CAPCRW5r5bgJACwGEml0aydaETvIb79+5R4jTaf6/oswcS4Hn6EQ8DAA+Ai6DE83R/MqG0clid239hSNwqPi6f6bgwGjNpdYD7dhA602fo0m1JRktygIc0PKeXsE81hcCER/Bdkq8U+Y3KTpchd8k/UAyB0j9UskLfMAJtkfY="
+   secure: "WmR/YKPiHUgHJyOjq1Et+5wlGKobareTj2USp5erIH5/iQaNvky/3g//S5DulzIzegCSBiPonkoHryELlWSi0Aeykd1bkElrxQNqQWs1soCnQ259hq585EhDshNXa6V9BZg6NMlBG6qZEzyr0rwvqdF46s97DeGCepURmU+KBto="
 
 branches:
  except:
