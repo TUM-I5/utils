@@ -245,7 +245,7 @@ public:
  * Function to activate automatic spacing
  *
  * Example:
- * <code>logInfo() << nospace() << x << ":";
+ * <code>logInfo() << nospace() << x << ":";</code>
  */
 inline Logger& space(Logger &logger)
 {
