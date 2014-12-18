@@ -23,11 +23,13 @@
 
 #include "utils/mathutils.h"
 
+using namespace utils;
+
 class TestMathUtils : public CxxTest::TestSuite
 {
 public:
 	void testGcd()
 	{
-		TS_ASSERT_EQUALS(utils::MathUtils::gcd(6, 9), 3);
+		TS_ASSERT_EQUALS(MathUtils::gcd(6, 9), 3);
 	}
 };

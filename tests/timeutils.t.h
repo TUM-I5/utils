@@ -23,6 +23,8 @@
 
 #include "utils/timeutils.h"
 
+using namespace utils;
+
 class TestTimeUtils : public CxxTest::TestSuite
 {
 public:

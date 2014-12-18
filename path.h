@@ -51,6 +51,14 @@ public:
 	}
 
 	/**
+	 * @return The string representing the current path
+	 */
+	operator std::string() const
+	{
+		return m_path;
+	}
+
+	/**
 	 * @return The basename of the path
 	 */
 	std::string basename() const
@@ -63,7 +71,7 @@ public:
 	}
 
 	/**
-	 * @return The path to the file/directory
+	 * @return The directory name of the path
 	 */
 	std::string dirname() const
 	{
@@ -72,6 +80,30 @@ public:
 			return "";
 
 		return m_path.substr(0, lastSlash);
+	}
+
+	/**
+	 * @return The directory of the path
+	 */
+	Path dir() const
+	{
+		return Path(dirname());
+	}
+
+	/**
+	 * Joins two paths
+	 *
+	 * @param other The path that should be appended (has to be relative)
+	 * @return A path where other is appended to the current path
+	 */
+	Path operator+(const Path& other) const
+	{
+		if (m_path.empty())
+			return other;
+		if (other.m_path.empty())
+			return *this;
+
+		return Path(m_path + SEPARATOR + other.m_path);
 	}
 
 public:

@@ -23,6 +23,8 @@
 
 #include "utils/stringutils.h"
 
+using namespace utils;
+
 class TestStringUtils : public CxxTest::TestSuite
 {
 public:

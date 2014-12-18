@@ -23,6 +23,8 @@
 
 #include "utils/args.h"
 
+using namespace utils;
+
 class TestArgs : public CxxTest::TestSuite
 {
 public:

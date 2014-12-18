@@ -23,6 +23,8 @@
 
 #include "utils/progress.h"
 
+using namespace utils;
+
 class TestProgress : public CxxTest::TestSuite
 {
 public:

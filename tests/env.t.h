@@ -23,6 +23,8 @@
 
 #include "utils/env.h"
 
+using namespace utils;
+
 class TestEnv : public CxxTest::TestSuite
 {
 public:
