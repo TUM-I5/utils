@@ -29,5 +29,13 @@ public:
 	void testBasename()
 	{
 		TS_ASSERT_EQUALS(utils::Path("foo/bar").basename(), "bar");
+		TS_ASSERT_EQUALS(utils::Path("foo").basename(), "foo")
+	}
+
+	void testDirname()
+	{
+		TS_ASSERT_EQUALS(utils::Path("foo/bar").dirname(), "foo");
+		TS_ASSERT_EQUALS(utils::Path("foo/foo/bar").dirname(), "foo/foo");
+		TS_ASSERT_EQUALS(utils::Path("foo").dirname(), "");
 	}
 };

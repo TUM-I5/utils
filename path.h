@@ -62,6 +62,18 @@ public:
 		return m_path.substr(lastSlash+1);
 	}
 
+	/**
+	 * @return The path to the file/directory
+	 */
+	std::string dirname() const
+	{
+		const size_t lastSlash =  m_path.find_last_of(separators());
+		if (lastSlash == std::string::npos)
+			return "";
+
+		return m_path.substr(0, lastSlash);
+	}
+
 public:
 	static const char* separator()
 	{
