@@ -115,8 +115,11 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 Public Member Functions</h2></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a411181892d79563476886f52a8ee155c">Path</a> (const char *path)</td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a489cd912225e54a85c056dac7be1976d">Path</a> (const std::string &amp;path)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a0b08ce54b83d404a06c61483dd8f8aab">operator std::string</a> () const </td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a92fcfb119e5d13b11aefef81576ac418">basename</a> () const </td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#ae0bf44634e86e9775eed1854108bed2f">dirname</a> () const </td></tr>
+<tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Path.html">Path</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a9e62493f29696dd6ef2d0b849e758edb">dir</a> () const </td></tr>
+<tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Path.html">Path</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#ab27e75e39dc96888cd2353e538840187">operator+</a> (const <a class="el" href="classutils_1_1Path.html">Path</a> &amp;other) const </td></tr>
 <tr><td colspan="2"><h2><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">static const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a61140e3e5171b05113a98c6a82836685">separator</a> ()</td></tr>
@@ -180,6 +183,23 @@ Static Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="a9e62493f29696dd6ef2d0b849e758edb"></a><!-- doxytag: member="utils::Path::dir" ref="a9e62493f29696dd6ef2d0b849e758edb" args="() const " -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Path.html">Path</a> <a class="el" href="classutils_1_1Path.html#a9e62493f29696dd6ef2d0b849e758edb">utils::Path::dir</a> </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const<code> [inline]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<dl class="return"><dt><b>Returns:</b></dt><dd>The directory of the path </dd></dl>
+
+</div>
+</div>
 <a class="anchor" id="ae0bf44634e86e9775eed1854108bed2f"></a><!-- doxytag: member="utils::Path::dirname" ref="ae0bf44634e86e9775eed1854108bed2f" args="() const " -->
 <div class="memitem">
 <div class="memproto">
@@ -193,7 +213,49 @@ Static Public Attributes</h2></td></tr>
       </table>
 </div>
 <div class="memdoc">
-<dl class="return"><dt><b>Returns:</b></dt><dd>The path to the file/directory </dd></dl>
+<dl class="return"><dt><b>Returns:</b></dt><dd>The directory name of the path </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a0b08ce54b83d404a06c61483dd8f8aab"></a><!-- doxytag: member="utils::Path::operator std::string" ref="a0b08ce54b83d404a06c61483dd8f8aab" args="() const " -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">utils::Path::operator std::string </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const<code> [inline]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<dl class="return"><dt><b>Returns:</b></dt><dd>The string representing the current path </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ab27e75e39dc96888cd2353e538840187"></a><!-- doxytag: member="utils::Path::operator+" ref="ab27e75e39dc96888cd2353e538840187" args="(const Path &amp;other) const " -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Path.html">Path</a> utils::Path::operator+ </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classutils_1_1Path.html">Path</a> &amp;&#160;</td>
+          <td class="paramname"><em>other</em></td><td>)</td>
+          <td> const<code> [inline]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Joins two paths</p>
+<dl class="params"><dt><b>Parameters:</b></dt><dd>
+  <table class="params">
+    <tr><td class="paramname">other</td><td>The path that should be appended (has to be relative) </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="return"><dt><b>Returns:</b></dt><dd>A path where other is appended to the current path </dd></dl>
 
 </div>
 </div>
@@ -265,7 +327,7 @@ Static Public Attributes</h2></td></tr>
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Thu Dec 18 2014 14:58:34 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu Dec 18 2014 15:24:10 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>
