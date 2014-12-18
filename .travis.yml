@@ -7,7 +7,7 @@ before_install:
  - sudo apt-get update -qq
 
 install:
- - sudo apt-get install -qq doxygen graphviz
+ - sudo apt-get install -qq cmake doxygen graphviz
 
 env:
  global:
@@ -18,7 +18,9 @@ branches:
   - gh-pages 
 
 script:
- - make
+ - mkdir build && cd build && cmake ../ && make
+ - make test
 
 after_success:
+ - cd ..
  - cd doc && ./gh_pages.sh
