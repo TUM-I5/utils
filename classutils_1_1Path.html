@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
-<title>C++ Utils: utils::MathUtils Class Reference</title>
+<title>C++ Utils: utils::Path Class Reference</title>
 
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
@@ -93,70 +93,141 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="nav-path" class="navpath">
     <ul>
       <li class="navelem"><a class="el" href="namespaceutils.html">utils</a>      </li>
-      <li class="navelem"><a class="el" href="classutils_1_1MathUtils.html">MathUtils</a>      </li>
+      <li class="navelem"><a class="el" href="classutils_1_1Path.html">Path</a>      </li>
     </ul>
   </div>
 </div>
 <div class="header">
   <div class="summary">
-<a href="#pub-static-methods">Static Public Member Functions</a>  </div>
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a>  </div>
   <div class="headertitle">
-<div class="title">utils::MathUtils Class Reference</div>  </div>
+<div class="title">utils::Path Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<!-- doxytag: class="utils::MathUtils" -->
-<p><code>#include &lt;<a class="el" href="mathutils_8h_source.html">mathutils.h</a>&gt;</code></p>
+<!-- doxytag: class="utils::Path" -->
+<p><code>#include &lt;<a class="el" href="path_8h_source.html">path.h</a>&gt;</code></p>
 
-<p><a href="classutils_1_1MathUtils-members.html">List of all members.</a></p>
+<p><a href="classutils_1_1Path-members.html">List of all members.</a></p>
 <table class="memberdecls">
+<tr><td colspan="2"><h2><a name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a411181892d79563476886f52a8ee155c">Path</a> (const char *path)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a489cd912225e54a85c056dac7be1976d">Path</a> (const std::string &amp;path)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a92fcfb119e5d13b11aefef81576ac418">basename</a> () const </td></tr>
 <tr><td colspan="2"><h2><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr><td class="memTemplItemLeft" align="right" valign="top">static T&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1MathUtils.html#ae28c290e45122c3805301c555589f891">gcd</a> (T a, T b)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">static const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a61140e3e5171b05113a98c6a82836685">separator</a> ()</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">static const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#a739bf5b968c79d0b3b7a1e0e9183fc4c">separators</a> ()</td></tr>
+<tr><td colspan="2"><h2><a name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">static const char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Path.html#ae8eac1bccc16c89754dcf53968a6769a">SEPARATOR</a> = '\\'</td></tr>
 </table>
 <hr/><a name="details" id="details"></a><h2>Detailed Description</h2>
-<div class="textblock"><p>A collection of useful math functions </p>
-</div><hr/><h2>Member Function Documentation</h2>
-<a class="anchor" id="ae28c290e45122c3805301c555589f891"></a><!-- doxytag: member="utils::MathUtils::gcd" ref="ae28c290e45122c3805301c555589f891" args="(T a, T b)" -->
+<div class="textblock"><p>Manipulates file/directory names and paths </p>
+</div><hr/><h2>Constructor &amp; Destructor Documentation</h2>
+<a class="anchor" id="a411181892d79563476886f52a8ee155c"></a><!-- doxytag: member="utils::Path::Path" ref="a411181892d79563476886f52a8ee155c" args="(const char *path)" -->
 <div class="memitem">
 <div class="memproto">
-<div class="memtemplate">
-template&lt;typename T &gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">static T <a class="el" href="classutils_1_1MathUtils.html#ae28c290e45122c3805301c555589f891">utils::MathUtils::gcd</a> </td>
+          <td class="memname"><a class="el" href="classutils_1_1Path.html#a411181892d79563476886f52a8ee155c">utils::Path::Path</a> </td>
           <td>(</td>
-          <td class="paramtype">T&#160;</td>
-          <td class="paramname"><em>a</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">T&#160;</td>
-          <td class="paramname"><em>b</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td><code> [inline, static]</code></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>path</em></td><td>)</td>
+          <td><code> [inline]</code></td>
         </tr>
       </table>
 </div>
 <div class="memdoc">
-<p>Computes the greatest common divisor of a and b</p>
-<dl class="params"><dt><b>Parameters:</b></dt><dd>
-  <table class="params">
-    <tr><td class="paramname">a</td><td></td></tr>
-    <tr><td class="paramname">b</td><td></td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="return"><dt><b>Returns:</b></dt><dd></dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a489cd912225e54a85c056dac7be1976d"></a><!-- doxytag: member="utils::Path::Path" ref="a489cd912225e54a85c056dac7be1976d" args="(const std::string &amp;path)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Path.html#a411181892d79563476886f52a8ee155c">utils::Path::Path</a> </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>path</em></td><td>)</td>
+          <td><code> [inline]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+</div>
+</div>
+<hr/><h2>Member Function Documentation</h2>
+<a class="anchor" id="a92fcfb119e5d13b11aefef81576ac418"></a><!-- doxytag: member="utils::Path::basename" ref="a92fcfb119e5d13b11aefef81576ac418" args="() const " -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string <a class="el" href="classutils_1_1Path.html#a92fcfb119e5d13b11aefef81576ac418">utils::Path::basename</a> </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const<code> [inline]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<dl class="return"><dt><b>Returns:</b></dt><dd>The basename of the path </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a61140e3e5171b05113a98c6a82836685"></a><!-- doxytag: member="utils::Path::separator" ref="a61140e3e5171b05113a98c6a82836685" args="()" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">static const char* <a class="el" href="classutils_1_1Path.html#a61140e3e5171b05113a98c6a82836685">utils::Path::separator</a> </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td><code> [inline, static]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+
+</div>
+</div>
+<a class="anchor" id="a739bf5b968c79d0b3b7a1e0e9183fc4c"></a><!-- doxytag: member="utils::Path::separators" ref="a739bf5b968c79d0b3b7a1e0e9183fc4c" args="()" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">static const char* <a class="el" href="classutils_1_1Path.html#a739bf5b968c79d0b3b7a1e0e9183fc4c">utils::Path::separators</a> </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td><code> [inline, static]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<dl class="return"><dt><b>Returns:</b></dt><dd>A string containing all possible separators </dd></dl>
+
+</div>
+</div>
+<hr/><h2>Member Data Documentation</h2>
+<a class="anchor" id="ae8eac1bccc16c89754dcf53968a6769a"></a><!-- doxytag: member="utils::Path::SEPARATOR" ref="ae8eac1bccc16c89754dcf53968a6769a" args="" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const char <a class="el" href="classutils_1_1Path.html#ae8eac1bccc16c89754dcf53968a6769a">utils::Path::SEPARATOR</a> = '\\'<code> [static]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
 
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>utils/<a class="el" href="mathutils_8h_source.html">mathutils.h</a></li>
+<li>utils/<a class="el" href="path_8h_source.html">path.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- window showing the filter options -->
