@@ -38,6 +38,10 @@ private:
 	std::string m_path;
 
 public:
+	Path()
+	{
+	}
+
 	Path(const char* path)
 		: m_path(path)
 	{
