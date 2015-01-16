@@ -11,7 +11,7 @@ Documentation
 License
 -------
 
-UTILS is released under LGPL (see [COPYING](COPYING))
+UTILS is released under BSD-3 (see [COPYING](COPYING))
 
 Build Status
 ------------
