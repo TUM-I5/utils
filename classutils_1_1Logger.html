@@ -141,6 +141,11 @@ Public Member Functions</h2></td></tr>
 Related Functions</h2></td></tr>
 <tr><td class="ititle" colspan="2"><p>(Note that these are not member functions.) </p>
 </td></tr>
+<tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#aff83c750d254d88e91c8cb0f58cd3f26">space</a> (<a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;logger)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#ad14e63b5da5b92a54ddff7c295a1650f">nospace</a> (<a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;logger)</td></tr>
+<tr><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#aded91569ce0d56ec017699896257afab">operator&lt;&lt;</a> (<a class="el" href="classutils_1_1Logger.html">Logger</a> debug, const std::vector&lt; T &gt; &amp;list)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">utils::Logger</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#af6cdb7bbb98677bbe8a040a5850c9400">logError</a> ()</td></tr>
 <tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">utils::Logger</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#a7c62330721267600a88b64efdb4a3ceb">logWarning</a> (int rank=0)</td></tr>
 <tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">utils::Logger</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#ae3e66efbde992adca1d70ab06d5374ed">logInfo</a> (int rank=0)</td></tr>
 <tr><td class="memItemLeft" align="right" valign="top"><a class="el" href="classutils_1_1Logger.html">utils::Logger</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1Logger.html#af66cb12a008408c005a74f4b88dbb09d">logDebug</a> (int rank=0)</td></tr>
@@ -430,6 +435,23 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
+<a class="anchor" id="af6cdb7bbb98677bbe8a040a5850c9400"></a><!-- doxytag: member="utils::Logger::logError" ref="af6cdb7bbb98677bbe8a040a5850c9400" args="()" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Logger.html">utils::Logger</a> <a class="el" href="classutils_1_1Logger.html#af6cdb7bbb98677bbe8a040a5850c9400">logError</a> </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td><code> [related]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Create error message and exit </p>
+
+</div>
+</div>
 <a class="anchor" id="ae3e66efbde992adca1d70ab06d5374ed"></a><!-- doxytag: member="utils::Logger::logInfo" ref="ae3e66efbde992adca1d70ab06d5374ed" args="(int rank=0)" -->
 <div class="memitem">
 <div class="memproto">
@@ -466,6 +488,74 @@ template&lt;typename T &gt; </div>
 
 </div>
 </div>
+<a class="anchor" id="ad14e63b5da5b92a54ddff7c295a1650f"></a><!-- doxytag: member="utils::Logger::nospace" ref="ad14e63b5da5b92a54ddff7c295a1650f" args="(Logger &amp;logger)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp; <a class="el" href="classutils_1_1Logger.html#a98fe4b8809ad290b57d85886d217d1be">nospace</a> </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;&#160;</td>
+          <td class="paramname"><em>logger</em></td><td>)</td>
+          <td><code> [related]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Function to deactivate automatic spacing</p>
+<dl class="see"><dt><b>See also:</b></dt><dd><a class="el" href="classutils_1_1Logger.html#a20e09d33bb5bd730387ad144af9e7649">space()</a> </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="aded91569ce0d56ec017699896257afab"></a><!-- doxytag: member="utils::Logger::operator&lt;&lt;" ref="aded91569ce0d56ec017699896257afab" args="(Logger debug, const std::vector&lt; T &gt; &amp;list)" -->
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp; operator&lt;&lt; </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classutils_1_1Logger.html">Logger</a>&#160;</td>
+          <td class="paramname"><em>debug</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::vector&lt; T &gt; &amp;&#160;</td>
+          <td class="paramname"><em>list</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td><code> [related]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Add a std::vector&lt;T&gt; to the message </p>
+
+</div>
+</div>
+<a class="anchor" id="aff83c750d254d88e91c8cb0f58cd3f26"></a><!-- doxytag: member="utils::Logger::space" ref="aff83c750d254d88e91c8cb0f58cd3f26" args="(Logger &amp;logger)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp; <a class="el" href="classutils_1_1Logger.html#a20e09d33bb5bd730387ad144af9e7649">space</a> </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classutils_1_1Logger.html">Logger</a> &amp;&#160;</td>
+          <td class="paramname"><em>logger</em></td><td>)</td>
+          <td><code> [related]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Function to activate automatic spacing</p>
+<p>Example: <code><a class="el" href="classutils_1_1Logger.html#ae3e66efbde992adca1d70ab06d5374ed">logInfo()</a> &lt;&lt; <a class="el" href="classutils_1_1Logger.html#a98fe4b8809ad290b57d85886d217d1be">nospace()</a> &lt;&lt; x &lt;&lt; ":";</code> </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>utils/<a class="el" href="logger_8h_source.html">logger.h</a></li>
 </ul>
@@ -487,7 +577,7 @@ template&lt;typename T &gt; </div>
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Thu Dec 18 2014 15:27:45 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Fri Jan 16 2015 14:54:38 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>
