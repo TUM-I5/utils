@@ -42,6 +42,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <execinfo.h>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -65,6 +66,10 @@
 #define LOG_ABORT abort()
 #endif // MPI_VERSION
 #endif // LOG_ABORT
+
+#ifndef BACKTRACE_SIZE
+#define BACKTRACE_SIZE 50
+#endif // BACKTRACE_SIZE
 
 /**
  * A collection of useful utility functions
@@ -160,6 +165,24 @@ public:
 
 			if (stream->type == ERROR) {
 				delete stream;
+
+				// Backtrace
+				if (BACKTRACE_SIZE > 0) {
+					void *buffer[BACKTRACE_SIZE];
+					int nptrs = backtrace(buffer, BACKTRACE_SIZE);
+					char** strings = backtrace_symbols(buffer, nptrs);
+
+					// Buffer output to avoid interlacing with other processes
+					std::stringstream outputBuffer;
+					outputBuffer << "Backtrace:" << std::endl;
+					for (int i = 0; i < nptrs; i++)
+						outputBuffer << strings[i] << std::endl;
+					free(strings);
+
+					// Write backtrace to stderr
+					std::cerr << outputBuffer.str() << std::flush;
+				}
+
 				LOG_ABORT;
 			}
 
