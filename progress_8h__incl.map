@@ -1,6 +1,6 @@
 <map id="G" name="G">
-<area shape="rect" id="node3" href="$env_8h.html" title="utils/env.h" alt="" coords="364,83,447,112"/>
-<area shape="rect" id="node7" href="$stringutils_8h.html" title="utils/stringutils.h" alt="" coords="235,160,352,189"/>
-<area shape="rect" id="node25" href="$logger_8h.html" title="utils/logger.h" alt="" coords="551,83,647,112"/>
-<area shape="rect" id="node27" href="$timeutils_8h.html" title="utils/timeutils.h" alt="" coords="661,160,771,189"/>
+<area shape="rect" id="node3" href="$env_8h.html" title="utils/env.h" alt="" coords="359,83,441,112"/>
+<area shape="rect" id="node7" href="$stringutils_8h.html" title="utils/stringutils.h" alt="" coords="229,160,347,189"/>
+<area shape="rect" id="node25" href="$logger_8h.html" title="utils/logger.h" alt="" coords="612,83,708,112"/>
+<area shape="rect" id="node27" href="$timeutils_8h.html" title="utils/timeutils.h" alt="" coords="605,160,715,189"/>
 </map>
