@@ -66,6 +66,12 @@ public:
 		TS_ASSERT_EQUALS(std::string(Path("foo/bar").dir()), "foo");
 	}
 
+	void testExists()
+	{
+		TS_ASSERT(Path("/dev/null").exists());
+		TS_ASSERT(!Path("/dev/asdfasdf").exists());
+	}
+
 	void testOperatorPlus()
 	{
 		TS_ASSERT_EQUALS(std::string(Path("foo")+Path("bar")), "foo/bar");

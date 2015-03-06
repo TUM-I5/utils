@@ -38,6 +38,7 @@
 #define UTILS_PATH_H
 
 #include <string>
+#include <sys/stat.h>
 
 #include "utils/stringutils.h"
 
@@ -107,6 +108,15 @@ public:
 	Path dir() const
 	{
 		return Path(dirname());
+	}
+
+	/**
+	 * @return True of the path is a file/directory
+	 */
+	bool exists() const
+	{
+		struct stat buffer;
+		return (stat(m_path.c_str(), &buffer) == 0);
 	}
 
 	/**
