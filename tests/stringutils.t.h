@@ -43,8 +43,15 @@ using namespace utils;
 class TestStringUtils : public CxxTest::TestSuite
 {
 public:
-	void testFoo()
+	void testParse()
 	{
-		// TODO
+		// Normal parser
+
+		// Advanced parser
+		TS_ASSERT(StringUtils::parse<bool>("on", true));
+		TS_ASSERT(StringUtils::parse<bool>("yes", true));
+		TS_ASSERT(StringUtils::parse<bool>("1", true));
+		TS_ASSERT(!StringUtils::parse<bool>("off", true))
+		TS_ASSERT(!StringUtils::parse<bool>("abc", true))
 	}
 };

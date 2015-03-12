@@ -108,6 +108,8 @@ public:
 
 	/**
 	 * Converts strings to arbitrary datatypes (using the << stream operator)
+	 *
+	 * @param str The string that should be converted
 	 */
 	template<typename T>
 	static T parse(const std::string &str)
@@ -116,6 +118,19 @@ public:
 		std::istringstream(str) >> result;
 
 		return result;
+	}
+
+	/**
+	 * Converts strings to arbitrary datatypes
+	 *
+	 * @param str The string that should be converted
+	 * @param advanced True of advanced conversions should be enabled
+	 */
+	template<typename T>
+	static T parse(const std::string &str, bool adavanced)
+	{
+		// By default the advanced mode is disabled for all datatypes
+		return parse<T>(str);
 	}
 
 	/**
@@ -228,6 +243,19 @@ template<> inline
 const char* StringUtils::parse(const std::string &str)
 {
 	return str.c_str();
+}
+
+template<> inline
+bool StringUtils::parse(const std::string &str, bool advanced)
+{
+	std::string s = str;
+	toLower(s);
+
+	if (s == "on"
+			|| s == "yes")
+		return true;
+
+	return parse<bool>(str);
 }
 
 }
