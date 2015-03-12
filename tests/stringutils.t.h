@@ -46,11 +46,12 @@ public:
 	void testParse()
 	{
 		// Normal parser
+		// TODO missing test
 
 		// Advanced parser
 		TS_ASSERT(StringUtils::parse<bool>("on", true));
 		TS_ASSERT(StringUtils::parse<bool>("yes", true));
-		TS_ASSERT(StringUtils::parse<bool>("1", true));
+		TS_ASSERT(StringUtils::parse<bool>("on", true));
 		TS_ASSERT(!StringUtils::parse<bool>("off", true))
 		TS_ASSERT(!StringUtils::parse<bool>("abc", true))
 	}
