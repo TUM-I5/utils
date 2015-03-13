@@ -165,6 +165,8 @@ public:
 
 			if (stream->type == ERROR) {
 				delete stream;
+				stream = 0L;	// Avoid double free if LOG_ABORT does
+								// does not exit the program
 
 				// Backtrace
 				if (BACKTRACE_SIZE > 0) {
