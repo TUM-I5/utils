@@ -463,7 +463,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00448"></a>00448                         v = value;
 <a name="l00449"></a>00449                 <span class="keywordflow">else</span> <span class="keywordflow">if</span> (argument != <a class="code" href="classutils_1_1Args.html#ac7a42fde49a392c1d74e93d07594c4f6a53a5594350e2fb7e7ae8446a31b9b613">No</a>) {
 <a name="l00450"></a>00450                         v = longOption;
-<a name="l00451"></a>00451                         for_each(v.begin(), v.end(), valueConvert());
+<a name="l00451"></a>00451                         std::for_each(v.begin(), v.end(), valueConvert());
 <a name="l00452"></a>00452                 }
 <a name="l00453"></a>00453 
 <a name="l00454"></a>00454                 <span class="keyword">struct </span>optionInfo i = {enumValues, longOption, v, description, required};
@@ -525,7 +525,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Fri Mar 13 2015 18:41:15 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu Apr 9 2015 18:28:12 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>
