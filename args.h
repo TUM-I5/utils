@@ -448,7 +448,7 @@ private:
 			v = value;
 		else if (argument != No) {
 			v = longOption;
-			for_each(v.begin(), v.end(), valueConvert());
+			std::for_each(v.begin(), v.end(), valueConvert());
 		}
 
 		struct optionInfo i = {enumValues, longOption, v, description, required};
