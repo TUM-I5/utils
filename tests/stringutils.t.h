@@ -43,6 +43,18 @@ using namespace utils;
 class TestStringUtils : public CxxTest::TestSuite
 {
 public:
+	void testStartsWith()
+	{
+		TS_ASSERT(StringUtils::startsWith("abcde", "abc"));
+		TS_ASSERT(!StringUtils::startsWith("abcde", "abd"));
+	}
+
+	void testEndsWith()
+	{
+		TS_ASSERT(StringUtils::endsWith("abcde", "cde"));
+		TS_ASSERT(!StringUtils::endsWith("abcde", "abc"));
+	}
+
 	void testParse()
 	{
 		// Normal parser
@@ -53,7 +65,7 @@ public:
 		TS_ASSERT(StringUtils::parse<bool>("on", true));
 		TS_ASSERT(StringUtils::parse<bool>("yes", true));
 		TS_ASSERT(StringUtils::parse<bool>("on", true));
-		TS_ASSERT(!StringUtils::parse<bool>("off", true))
-		TS_ASSERT(!StringUtils::parse<bool>("abc", true))
+		TS_ASSERT(!StringUtils::parse<bool>("off", true));
+		TS_ASSERT(!StringUtils::parse<bool>("abc", true));
 	}
 };
