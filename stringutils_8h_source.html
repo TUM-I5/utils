@@ -117,127 +117,133 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00083"></a>00083                 <span class="keywordflow">return</span> <span class="keyword">true</span>;
 <a name="l00084"></a>00084         }
 <a name="l00085"></a>00085 
-<a name="l00091"></a><a class="code" href="classutils_1_1StringUtils.html#a3c1e5438c177a2eaf1342c4307d0b667">00091</a>         <span class="keyword">static</span> <span class="keywordtype">bool</span> <a class="code" href="classutils_1_1StringUtils.html#a3c1e5438c177a2eaf1342c4307d0b667">endsWith</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keyword">const</span> std::string &amp;suffix)
-<a name="l00092"></a>00092         {
-<a name="l00093"></a>00093                 <span class="keywordflow">return</span> str.size() &gt;= suffix.size() &amp;&amp;
-<a name="l00094"></a>00094                                 str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-<a name="l00095"></a>00095         }
-<a name="l00096"></a>00096 
-<a name="l00101"></a>00101         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
-<a name="l00102"></a><a class="code" href="classutils_1_1StringUtils.html#ac50f2913516b09d2440d21596422abcd">00102</a>         <span class="keyword">static</span> std::string <a class="code" href="classutils_1_1StringUtils.html#ac50f2913516b09d2440d21596422abcd">toString</a>(T value)
-<a name="l00103"></a>00103         {
-<a name="l00104"></a>00104                 std::ostringstream ss;
-<a name="l00105"></a>00105                 ss &lt;&lt; value;
-<a name="l00106"></a>00106                 <span class="keywordflow">return</span> ss.str();
-<a name="l00107"></a>00107         }
-<a name="l00108"></a>00108 
-<a name="l00114"></a>00114         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
-<a name="l00115"></a><a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">00115</a>         <span class="keyword">static</span> T <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">parse</a>(<span class="keyword">const</span> std::string &amp;str)
-<a name="l00116"></a>00116         {
-<a name="l00117"></a>00117                 T result;
-<a name="l00118"></a>00118                 std::istringstream(str) &gt;&gt; result;
-<a name="l00119"></a>00119 
-<a name="l00120"></a>00120                 <span class="keywordflow">return</span> result;
-<a name="l00121"></a>00121         }
-<a name="l00122"></a>00122 
-<a name="l00129"></a>00129         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
-<a name="l00130"></a><a class="code" href="classutils_1_1StringUtils.html#a8edc1fb2e327dd77299c601a5c6cb9df">00130</a>         <span class="keyword">static</span> T <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">parse</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keywordtype">bool</span> adavanced)
-<a name="l00131"></a>00131         {
-<a name="l00132"></a>00132                 <span class="comment">// By default the advanced mode is disabled for all datatypes</span>
-<a name="l00133"></a>00133                 <span class="keywordflow">return</span> parse&lt;T&gt;(str);
-<a name="l00134"></a>00134         }
-<a name="l00135"></a>00135 
-<a name="l00139"></a><a class="code" href="classutils_1_1StringUtils.html#a3c5686d7d1ca0b377e6f0fd50621c2ff">00139</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#a3c5686d7d1ca0b377e6f0fd50621c2ff">toUpper</a>(<span class="keywordtype">char</span>* s)
-<a name="l00140"></a>00140         {
-<a name="l00141"></a>00141                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; s[i]; i++)
-<a name="l00142"></a>00142                         s[i] = toupper(s[i]);
-<a name="l00143"></a>00143         }
-<a name="l00144"></a>00144 
-<a name="l00148"></a><a class="code" href="classutils_1_1StringUtils.html#a6bae5dd5f774804c802098d0f4cf680e">00148</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#a3c5686d7d1ca0b377e6f0fd50621c2ff">toUpper</a>(std::string &amp;str)
-<a name="l00149"></a>00149         {
-<a name="l00150"></a>00150                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0;  str[i]; i++)
-<a name="l00151"></a>00151                         str[i] = toupper(str[i]);
-<a name="l00152"></a>00152         }
-<a name="l00153"></a>00153 
-<a name="l00157"></a><a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">00157</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">toLower</a>(<span class="keywordtype">char</span>* s)
-<a name="l00158"></a>00158         {
-<a name="l00159"></a>00159                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; s[i]; i++)
-<a name="l00160"></a>00160                         s[i] = tolower(s[i]);
-<a name="l00161"></a>00161         }
-<a name="l00162"></a>00162 
-<a name="l00166"></a><a class="code" href="classutils_1_1StringUtils.html#ae3ef3eddbcd106a4465bab1d5e085883">00166</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">toLower</a>(std::string &amp;str)
-<a name="l00167"></a>00167         {
-<a name="l00168"></a>00168                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; str[i]; i++)
-<a name="l00169"></a>00169                         str[i] = tolower(str[i]);
-<a name="l00170"></a>00170         }
-<a name="l00171"></a>00171 
-<a name="l00177"></a><a class="code" href="classutils_1_1StringUtils.html#a3654184c1295acdf31a4780faa7fffc8">00177</a>         <span class="keyword">static</span> std::string &amp;<a class="code" href="classutils_1_1StringUtils.html#a3654184c1295acdf31a4780faa7fffc8">ltrim</a>(std::string &amp;s) {
-<a name="l00178"></a>00178                 s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun&lt;int, int&gt;(std::isspace))));
-<a name="l00179"></a>00179                 <span class="keywordflow">return</span> s;
-<a name="l00180"></a>00180         }
-<a name="l00181"></a>00181 
-<a name="l00187"></a><a class="code" href="classutils_1_1StringUtils.html#a7aacb88c5b78aba93eaeaac8e946a91d">00187</a>         <span class="keyword">static</span> std::string &amp;<a class="code" href="classutils_1_1StringUtils.html#a7aacb88c5b78aba93eaeaac8e946a91d">rtrim</a>(std::string &amp;s) {
-<a name="l00188"></a>00188                 s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun&lt;int, int&gt;(std::isspace))).base(), s.end());
-<a name="l00189"></a>00189                 <span class="keywordflow">return</span> s;
-<a name="l00190"></a>00190         }
-<a name="l00191"></a>00191 
-<a name="l00197"></a><a class="code" href="classutils_1_1StringUtils.html#a44bf341b4ae694b895888991b51b6110">00197</a>         <span class="keyword">static</span> std::string &amp;<a class="code" href="classutils_1_1StringUtils.html#a44bf341b4ae694b895888991b51b6110">trim</a>(std::string &amp;s) {
-<a name="l00198"></a>00198                 <span class="keywordflow">return</span> <a class="code" href="classutils_1_1StringUtils.html#a3654184c1295acdf31a4780faa7fffc8">ltrim</a>(<a class="code" href="classutils_1_1StringUtils.html#a7aacb88c5b78aba93eaeaac8e946a91d">rtrim</a>(s));
-<a name="l00199"></a>00199         }
-<a name="l00200"></a>00200 
-<a name="l00206"></a>00206         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
-<a name="l00207"></a><a class="code" href="classutils_1_1StringUtils.html#a1fb36856f073bc78c26dd66f35caf0a9">00207</a>         <span class="keyword">static</span> std::string <a class="code" href="classutils_1_1StringUtils.html#a1fb36856f073bc78c26dd66f35caf0a9">join</a>(<span class="keyword">const</span> std::vector&lt;T&gt; &amp;v, <span class="keyword">const</span> std::string &amp;token) {
-<a name="l00208"></a>00208                 std::ostringstream result;
-<a name="l00209"></a>00209                 <span class="keywordflow">for</span> (<span class="keyword">typename</span> std::vector&lt;T&gt;::const_iterator i = v.begin(); i != v.end(); i++){
-<a name="l00210"></a>00210                         <span class="keywordflow">if</span> (i != v.begin())
-<a name="l00211"></a>00211                                 result &lt;&lt; token;
-<a name="l00212"></a>00212                         result &lt;&lt; *i;
-<a name="l00213"></a>00213                 }
-<a name="l00214"></a>00214 
-<a name="l00215"></a>00215                 <span class="keywordflow">return</span> result.str();
-<a name="l00216"></a>00216         }
-<a name="l00217"></a>00217 
-<a name="l00223"></a><a class="code" href="classutils_1_1StringUtils.html#a3f2a4e4d84d6c5be320fd4bca735d182">00223</a>         <span class="keyword">static</span> std::vector&lt;std::string&gt; <a class="code" href="classutils_1_1StringUtils.html#a3f2a4e4d84d6c5be320fd4bca735d182">split</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keywordtype">char</span> delim)
-<a name="l00224"></a>00224         {
-<a name="l00225"></a>00225                 std::vector&lt;std::string&gt; elems;
-<a name="l00226"></a>00226                 std::stringstream ss(str);
-<a name="l00227"></a>00227 
-<a name="l00228"></a>00228                 std::string item;
-<a name="l00229"></a>00229                 <span class="keywordflow">while</span> (getline(ss, item, delim))
-<a name="l00230"></a>00230                         elems.push_back(item);
-<a name="l00231"></a>00231 
-<a name="l00232"></a>00232                 <span class="keywordflow">return</span> elems;
-<a name="l00233"></a>00233         }
-<a name="l00234"></a>00234 };
-<a name="l00235"></a>00235 
-<a name="l00236"></a>00236 <span class="keyword">template</span>&lt;&gt; <span class="keyword">inline</span>
-<a name="l00237"></a>00237 std::string <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">StringUtils::parse</a>(<span class="keyword">const</span> std::string &amp;str)
-<a name="l00238"></a>00238 {
-<a name="l00239"></a>00239         <span class="keywordflow">return</span> str;
-<a name="l00240"></a>00240 }
+<a name="l00086"></a><a class="code" href="classutils_1_1StringUtils.html#ad0fa9faea9c639e5610d6e5663cf33ea">00086</a>         <span class="keyword">static</span> <span class="keywordtype">bool</span> <a class="code" href="classutils_1_1StringUtils.html#ad0fa9faea9c639e5610d6e5663cf33ea">startsWith</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keyword">const</span> std::string &amp;prefix)
+<a name="l00087"></a>00087         {
+<a name="l00088"></a>00088                 <span class="keywordflow">return</span> str.size() &gt;= prefix.size() &amp;&amp;
+<a name="l00089"></a>00089                                 str.compare(0, prefix.size(), prefix) == 0;
+<a name="l00090"></a>00090         }
+<a name="l00091"></a>00091 
+<a name="l00097"></a><a class="code" href="classutils_1_1StringUtils.html#a3c1e5438c177a2eaf1342c4307d0b667">00097</a>         <span class="keyword">static</span> <span class="keywordtype">bool</span> <a class="code" href="classutils_1_1StringUtils.html#a3c1e5438c177a2eaf1342c4307d0b667">endsWith</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keyword">const</span> std::string &amp;suffix)
+<a name="l00098"></a>00098         {
+<a name="l00099"></a>00099                 <span class="keywordflow">return</span> str.size() &gt;= suffix.size() &amp;&amp;
+<a name="l00100"></a>00100                                 str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+<a name="l00101"></a>00101         }
+<a name="l00102"></a>00102 
+<a name="l00107"></a>00107         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
+<a name="l00108"></a><a class="code" href="classutils_1_1StringUtils.html#ac50f2913516b09d2440d21596422abcd">00108</a>         <span class="keyword">static</span> std::string <a class="code" href="classutils_1_1StringUtils.html#ac50f2913516b09d2440d21596422abcd">toString</a>(T value)
+<a name="l00109"></a>00109         {
+<a name="l00110"></a>00110                 std::ostringstream ss;
+<a name="l00111"></a>00111                 ss &lt;&lt; value;
+<a name="l00112"></a>00112                 <span class="keywordflow">return</span> ss.str();
+<a name="l00113"></a>00113         }
+<a name="l00114"></a>00114 
+<a name="l00120"></a>00120         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
+<a name="l00121"></a><a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">00121</a>         <span class="keyword">static</span> T <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">parse</a>(<span class="keyword">const</span> std::string &amp;str)
+<a name="l00122"></a>00122         {
+<a name="l00123"></a>00123                 T result;
+<a name="l00124"></a>00124                 std::istringstream(str) &gt;&gt; result;
+<a name="l00125"></a>00125 
+<a name="l00126"></a>00126                 <span class="keywordflow">return</span> result;
+<a name="l00127"></a>00127         }
+<a name="l00128"></a>00128 
+<a name="l00135"></a>00135         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
+<a name="l00136"></a><a class="code" href="classutils_1_1StringUtils.html#a8edc1fb2e327dd77299c601a5c6cb9df">00136</a>         <span class="keyword">static</span> T <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">parse</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keywordtype">bool</span> adavanced)
+<a name="l00137"></a>00137         {
+<a name="l00138"></a>00138                 <span class="comment">// By default the advanced mode is disabled for all datatypes</span>
+<a name="l00139"></a>00139                 <span class="keywordflow">return</span> parse&lt;T&gt;(str);
+<a name="l00140"></a>00140         }
+<a name="l00141"></a>00141 
+<a name="l00145"></a><a class="code" href="classutils_1_1StringUtils.html#a3c5686d7d1ca0b377e6f0fd50621c2ff">00145</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#a3c5686d7d1ca0b377e6f0fd50621c2ff">toUpper</a>(<span class="keywordtype">char</span>* s)
+<a name="l00146"></a>00146         {
+<a name="l00147"></a>00147                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; s[i]; i++)
+<a name="l00148"></a>00148                         s[i] = toupper(s[i]);
+<a name="l00149"></a>00149         }
+<a name="l00150"></a>00150 
+<a name="l00154"></a><a class="code" href="classutils_1_1StringUtils.html#a6bae5dd5f774804c802098d0f4cf680e">00154</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#a3c5686d7d1ca0b377e6f0fd50621c2ff">toUpper</a>(std::string &amp;str)
+<a name="l00155"></a>00155         {
+<a name="l00156"></a>00156                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0;  str[i]; i++)
+<a name="l00157"></a>00157                         str[i] = toupper(str[i]);
+<a name="l00158"></a>00158         }
+<a name="l00159"></a>00159 
+<a name="l00163"></a><a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">00163</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">toLower</a>(<span class="keywordtype">char</span>* s)
+<a name="l00164"></a>00164         {
+<a name="l00165"></a>00165                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; s[i]; i++)
+<a name="l00166"></a>00166                         s[i] = tolower(s[i]);
+<a name="l00167"></a>00167         }
+<a name="l00168"></a>00168 
+<a name="l00172"></a><a class="code" href="classutils_1_1StringUtils.html#ae3ef3eddbcd106a4465bab1d5e085883">00172</a>         <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">toLower</a>(std::string &amp;str)
+<a name="l00173"></a>00173         {
+<a name="l00174"></a>00174                 <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; str[i]; i++)
+<a name="l00175"></a>00175                         str[i] = tolower(str[i]);
+<a name="l00176"></a>00176         }
+<a name="l00177"></a>00177 
+<a name="l00183"></a><a class="code" href="classutils_1_1StringUtils.html#a3654184c1295acdf31a4780faa7fffc8">00183</a>         <span class="keyword">static</span> std::string &amp;<a class="code" href="classutils_1_1StringUtils.html#a3654184c1295acdf31a4780faa7fffc8">ltrim</a>(std::string &amp;s) {
+<a name="l00184"></a>00184                 s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun&lt;int, int&gt;(std::isspace))));
+<a name="l00185"></a>00185                 <span class="keywordflow">return</span> s;
+<a name="l00186"></a>00186         }
+<a name="l00187"></a>00187 
+<a name="l00193"></a><a class="code" href="classutils_1_1StringUtils.html#a7aacb88c5b78aba93eaeaac8e946a91d">00193</a>         <span class="keyword">static</span> std::string &amp;<a class="code" href="classutils_1_1StringUtils.html#a7aacb88c5b78aba93eaeaac8e946a91d">rtrim</a>(std::string &amp;s) {
+<a name="l00194"></a>00194                 s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun&lt;int, int&gt;(std::isspace))).base(), s.end());
+<a name="l00195"></a>00195                 <span class="keywordflow">return</span> s;
+<a name="l00196"></a>00196         }
+<a name="l00197"></a>00197 
+<a name="l00203"></a><a class="code" href="classutils_1_1StringUtils.html#a44bf341b4ae694b895888991b51b6110">00203</a>         <span class="keyword">static</span> std::string &amp;<a class="code" href="classutils_1_1StringUtils.html#a44bf341b4ae694b895888991b51b6110">trim</a>(std::string &amp;s) {
+<a name="l00204"></a>00204                 <span class="keywordflow">return</span> <a class="code" href="classutils_1_1StringUtils.html#a3654184c1295acdf31a4780faa7fffc8">ltrim</a>(<a class="code" href="classutils_1_1StringUtils.html#a7aacb88c5b78aba93eaeaac8e946a91d">rtrim</a>(s));
+<a name="l00205"></a>00205         }
+<a name="l00206"></a>00206 
+<a name="l00212"></a>00212         <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
+<a name="l00213"></a><a class="code" href="classutils_1_1StringUtils.html#a1fb36856f073bc78c26dd66f35caf0a9">00213</a>         <span class="keyword">static</span> std::string <a class="code" href="classutils_1_1StringUtils.html#a1fb36856f073bc78c26dd66f35caf0a9">join</a>(<span class="keyword">const</span> std::vector&lt;T&gt; &amp;v, <span class="keyword">const</span> std::string &amp;token) {
+<a name="l00214"></a>00214                 std::ostringstream result;
+<a name="l00215"></a>00215                 <span class="keywordflow">for</span> (<span class="keyword">typename</span> std::vector&lt;T&gt;::const_iterator i = v.begin(); i != v.end(); i++){
+<a name="l00216"></a>00216                         <span class="keywordflow">if</span> (i != v.begin())
+<a name="l00217"></a>00217                                 result &lt;&lt; token;
+<a name="l00218"></a>00218                         result &lt;&lt; *i;
+<a name="l00219"></a>00219                 }
+<a name="l00220"></a>00220 
+<a name="l00221"></a>00221                 <span class="keywordflow">return</span> result.str();
+<a name="l00222"></a>00222         }
+<a name="l00223"></a>00223 
+<a name="l00229"></a><a class="code" href="classutils_1_1StringUtils.html#a3f2a4e4d84d6c5be320fd4bca735d182">00229</a>         <span class="keyword">static</span> std::vector&lt;std::string&gt; <a class="code" href="classutils_1_1StringUtils.html#a3f2a4e4d84d6c5be320fd4bca735d182">split</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keywordtype">char</span> delim)
+<a name="l00230"></a>00230         {
+<a name="l00231"></a>00231                 std::vector&lt;std::string&gt; elems;
+<a name="l00232"></a>00232                 std::stringstream ss(str);
+<a name="l00233"></a>00233 
+<a name="l00234"></a>00234                 std::string item;
+<a name="l00235"></a>00235                 <span class="keywordflow">while</span> (getline(ss, item, delim))
+<a name="l00236"></a>00236                         elems.push_back(item);
+<a name="l00237"></a>00237 
+<a name="l00238"></a>00238                 <span class="keywordflow">return</span> elems;
+<a name="l00239"></a>00239         }
+<a name="l00240"></a>00240 };
 <a name="l00241"></a>00241 
 <a name="l00242"></a>00242 <span class="keyword">template</span>&lt;&gt; <span class="keyword">inline</span>
-<a name="l00243"></a>00243 <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">StringUtils::parse</a>(<span class="keyword">const</span> std::string &amp;str)
+<a name="l00243"></a>00243 std::string <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">StringUtils::parse</a>(<span class="keyword">const</span> std::string &amp;str)
 <a name="l00244"></a>00244 {
-<a name="l00245"></a>00245         <span class="keywordflow">return</span> str.c_str();
+<a name="l00245"></a>00245         <span class="keywordflow">return</span> str;
 <a name="l00246"></a>00246 }
 <a name="l00247"></a>00247 
 <a name="l00248"></a>00248 <span class="keyword">template</span>&lt;&gt; <span class="keyword">inline</span>
-<a name="l00249"></a>00249 <span class="keywordtype">bool</span> <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">StringUtils::parse</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keywordtype">bool</span> advanced)
+<a name="l00249"></a>00249 <span class="keyword">const</span> <span class="keywordtype">char</span>* <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">StringUtils::parse</a>(<span class="keyword">const</span> std::string &amp;str)
 <a name="l00250"></a>00250 {
-<a name="l00251"></a>00251         std::string s = str;
-<a name="l00252"></a>00252         <a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">toLower</a>(s);
+<a name="l00251"></a>00251         <span class="keywordflow">return</span> str.c_str();
+<a name="l00252"></a>00252 }
 <a name="l00253"></a>00253 
-<a name="l00254"></a>00254         <span class="keywordflow">if</span> (s == <span class="stringliteral">&quot;on&quot;</span>
-<a name="l00255"></a>00255                         || s == <span class="stringliteral">&quot;yes&quot;</span>)
-<a name="l00256"></a>00256                 <span class="keywordflow">return</span> <span class="keyword">true</span>;
-<a name="l00257"></a>00257 
-<a name="l00258"></a>00258         <span class="keywordflow">return</span> parse&lt;bool&gt;(str);
-<a name="l00259"></a>00259 }
-<a name="l00260"></a>00260 
-<a name="l00261"></a>00261 }
-<a name="l00262"></a>00262 
-<a name="l00263"></a>00263 <span class="preprocessor">#endif </span><span class="comment">/* UTILS_STRINGUTILS_H */</span>
+<a name="l00254"></a>00254 <span class="keyword">template</span>&lt;&gt; <span class="keyword">inline</span>
+<a name="l00255"></a>00255 <span class="keywordtype">bool</span> <a class="code" href="classutils_1_1StringUtils.html#a35e55444362296b8082d3fcb43d0b522">StringUtils::parse</a>(<span class="keyword">const</span> std::string &amp;str, <span class="keywordtype">bool</span> advanced)
+<a name="l00256"></a>00256 {
+<a name="l00257"></a>00257         std::string s = str;
+<a name="l00258"></a>00258         <a class="code" href="classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd">toLower</a>(s);
+<a name="l00259"></a>00259 
+<a name="l00260"></a>00260         <span class="keywordflow">if</span> (s == <span class="stringliteral">&quot;on&quot;</span>
+<a name="l00261"></a>00261                         || s == <span class="stringliteral">&quot;yes&quot;</span>)
+<a name="l00262"></a>00262                 <span class="keywordflow">return</span> <span class="keyword">true</span>;
+<a name="l00263"></a>00263 
+<a name="l00264"></a>00264         <span class="keywordflow">return</span> parse&lt;bool&gt;(str);
+<a name="l00265"></a>00265 }
+<a name="l00266"></a>00266 
+<a name="l00267"></a>00267 }
+<a name="l00268"></a>00268 
+<a name="l00269"></a>00269 <span class="preprocessor">#endif </span><span class="comment">/* UTILS_STRINGUTILS_H */</span>
 </pre></div></div><!-- contents -->
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
@@ -256,7 +262,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Sep 15 2015 11:49:13 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Sep 15 2015 12:05:32 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>

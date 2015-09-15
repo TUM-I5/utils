@@ -7,5 +7,6 @@ var searchData=
   ['settotal',['setTotal',['../classutils_1_1Progress.html#a6c0848f5307d6500f44b1b2d0e24dc2f',1,'utils::Progress']]],
   ['size',['size',['../classutils_1_1ArrayUtils.html#a852246e6a2bd4d11134f7a598ae95c8b',1,'utils::ArrayUtils']]],
   ['space',['space',['../classutils_1_1Logger.html#a20e09d33bb5bd730387ad144af9e7649',1,'utils::Logger::space()'],['../classutils_1_1Logger.html#aff83c750d254d88e91c8cb0f58cd3f26',1,'utils::Logger::space(Logger &amp;logger)']]],
-  ['split',['split',['../classutils_1_1StringUtils.html#a3f2a4e4d84d6c5be320fd4bca735d182',1,'utils::StringUtils']]]
+  ['split',['split',['../classutils_1_1StringUtils.html#a3f2a4e4d84d6c5be320fd4bca735d182',1,'utils::StringUtils']]],
+  ['startswith',['startsWith',['../classutils_1_1StringUtils.html#ad0fa9faea9c639e5610d6e5663cf33ea',1,'utils::StringUtils']]]
 ];
