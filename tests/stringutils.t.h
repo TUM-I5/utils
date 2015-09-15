@@ -46,7 +46,8 @@ public:
 	void testParse()
 	{
 		// Normal parser
-		// TODO missing test
+		// TODO more tests
+		TS_ASSERT_EQUALS(StringUtils::parse<int>("-1", 0), -1);
 
 		// Advanced parser
 		TS_ASSERT(StringUtils::parse<bool>("on", true));
