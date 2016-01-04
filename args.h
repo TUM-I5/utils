@@ -4,7 +4,7 @@
  *
  * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
  *
- * @copyright Copyright (c) 2013-2015, Technische Universitaet Muenchen.
+ * @copyright Copyright (c) 2013-2016, Technische Universitaet Muenchen.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -290,8 +290,13 @@ public:
 
 		// Parse additional options and check if all required options are set
 		int i;
-		for (i = 0; i < argc-optind; i++)
-			m_additionalArguments[m_additionalOptionInfo[i].name] = argv[i+optind];
+		for (i = 0; i < argc-optind; i++) {
+			if (i >= m_additionalOptionInfo.size()) {
+				if (printHelp)
+					std::cerr << argv[0] << ": ignoring unknown parameter \"" << argv[i+optind] << "\"" << std::endl;
+			} else
+				m_additionalArguments[m_additionalOptionInfo[i].name] = argv[i+optind];
+		}
 		if (static_cast<size_t>(i) < m_additionalOptionInfo.size()) {
 			if (m_additionalOptionInfo[i].required) {
 				if (printHelp) {
