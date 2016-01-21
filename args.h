@@ -291,7 +291,7 @@ public:
 		// Parse additional options and check if all required options are set
 		int i;
 		for (i = 0; i < argc-optind; i++) {
-			if (i >= m_additionalOptionInfo.size()) {
+			if (i >= static_cast<int>(m_additionalOptionInfo.size())) {
 				if (printHelp)
 					std::cerr << argv[0] << ": ignoring unknown parameter \"" << argv[i+optind] << "\"" << std::endl;
 			} else
