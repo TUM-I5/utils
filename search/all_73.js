@@ -11,5 +11,6 @@ var searchData=
   ['startswith',['startsWith',['../classutils_1_1StringUtils.html#ad0fa9faea9c639e5610d6e5663cf33ea',1,'utils::StringUtils']]],
   ['stringutils',['StringUtils',['../classutils_1_1StringUtils.html',1,'utils']]],
   ['stringutils_2eh',['stringutils.h',['../stringutils_8h.html',1,'']]],
-  ['success',['Success',['../classutils_1_1Args.html#a76f8c87011dc03bf54e5bd6d0bedc368a5c81e408f1404f7e70efc6d46eaaec6f',1,'utils::Args']]]
+  ['success',['Success',['../classutils_1_1Args.html#a76f8c87011dc03bf54e5bd6d0bedc368a5c81e408f1404f7e70efc6d46eaaec6f',1,'utils::Args']]],
+  ['swap',['swap',['../namespaceutils.html#a4b22c789724a654df1a1efba8b3b6083',1,'utils']]]
 ];
