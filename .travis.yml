@@ -1,13 +1,16 @@
+sudo: false
+
 language: cpp
 comiler:
  - gcc
  - clang
 
-before_install:
- - sudo apt-get update -qq
-
-install:
- - sudo apt-get install -qq cmake doxygen graphviz
+addons:
+ apt:
+  packages:
+   - cmake
+   - doxygen
+   - graphviz
 
 env:
  global:
