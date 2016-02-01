@@ -37,6 +37,7 @@
 #include <cxxtest/TestSuite.h>
 
 #include <cstdlib>
+#include <cstring>
 
 #include "utils/env.h"
 
@@ -49,6 +50,7 @@ public:
 	{
 		TS_ASSERT_EQUALS(setenv("UTILS_INT", "42", 1), 0);
 		TS_ASSERT_EQUALS(Env::get<int>("UTILS_INT", 0), 42);
+		TS_ASSERT_EQUALS(strcmp(Env::get("UTILS_INT", "0"), "42"), 0);
 		TS_ASSERT_EQUALS(Env::get<int>("UTILS_INT2", 3), 3);
 
 		TS_ASSERT_EQUALS(setenv("UTILS_BOOL", "1", 1), 0);
