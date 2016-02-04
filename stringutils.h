@@ -4,7 +4,7 @@
  *
  * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
  *
- * @copyright Copyright (c) 2013-2015, Technische Universitaet Muenchen.
+ * @copyright Copyright (c) 2013-2016, Technische Universitaet Muenchen.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -137,6 +137,18 @@ public:
 	{
 		// By default the advanced mode is disabled for all datatypes
 		return parse<T>(str);
+	}
+
+	template<typename T> inline
+	static std::vector<T> parseArray(const std::string &str)
+	{
+		std::vector<T> elems;
+		std::istringstream f(str);
+		std::string s;
+		while (std::getline(f, s, ':'))
+			elems.push_back(parse<T>(s));
+		
+		return elems;
 	}
 
 	/**

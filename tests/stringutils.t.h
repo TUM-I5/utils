@@ -4,7 +4,7 @@
  *
  * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
  *
- * @copyright Copyright (c) 2014-2015, Technische Universitaet Muenchen.
+ * @copyright Copyright (c) 2014-2016, Technische Universitaet Muenchen.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -67,5 +67,15 @@ public:
 		TS_ASSERT(StringUtils::parse<bool>("on", true));
 		TS_ASSERT(!StringUtils::parse<bool>("off", true));
 		TS_ASSERT(!StringUtils::parse<bool>("abc", true));
+	}
+	
+	void testParseArray()
+	{
+		// TODO more tests
+		std::vector<int> result = StringUtils::parseArray<int>("1:2:3");
+		
+		TS_ASSERT_EQUALS(result[0], 1);
+		TS_ASSERT_EQUALS(result[1], 2);
+		TS_ASSERT_EQUALS(result[2], 3);
 	}
 };
