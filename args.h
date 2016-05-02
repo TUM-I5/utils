@@ -389,47 +389,51 @@ public:
 			out << std::endl << m_description << std::endl;
 
 		// Arguments
-		out << std::endl << "arguments:" << std::endl;
-		for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
-			out << "  <" << m_additionalOptionInfo[i].name << '>';
+		if (!m_additionalOptionInfo.empty()) {
+			out << std::endl << "arguments:" << std::endl;
+			for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
+				out << "  <" << m_additionalOptionInfo[i].name << '>';
 
-			// Number of characters used for the option
-			size_t length = 4 + m_additionalOptionInfo[i].name.size();
+				// Number of characters used for the option
+				size_t length = 4 + m_additionalOptionInfo[i].name.size();
 
-			if (length >= 30) {
-				out << std::endl;
-				out << std::setw(30) << ' ';
-			} else
-				out << std::setw(30-length) << ' ';
+				if (length >= 30) {
+					out << std::endl;
+					out << std::setw(30) << ' ';
+				} else
+					out << std::setw(30-length) << ' ';
 
-			out << m_additionalOptionInfo[i].description << std::endl;
+				out << m_additionalOptionInfo[i].description << std::endl;
+			}
 		}
 
 		// Optional arguments
-		out << std::endl << "optional arguments:" << std::endl;
-		for (size_t i = 0; i < m_options.size()-1; i++) {
-			out << "  ";
+		if (m_options.size() > 1) {
+			out << std::endl << "optional arguments:" << std::endl;
+			for (size_t i = 0; i < m_options.size()-1; i++) {
+				out << "  ";
 
-			// Number of characters used for the option
-			size_t length = 2;
+				// Number of characters used for the option
+				size_t length = 2;
 
-			if (m_options[i].val != 0) {
-				out << '-' << static_cast<char>(m_options[i].val);
-				out << ", ";
-				length += 4;
+				if (m_options[i].val != 0) {
+					out << '-' << static_cast<char>(m_options[i].val);
+					out << ", ";
+					length += 4;
+				}
+
+				out << "--" << m_options[i].name;
+				length += m_optionInfo[i].longOption.size() + 2;
+				length += argumentInfo(i, out);
+
+				if (length >= 30) {
+					out << std::endl;
+					out << std::setw(30) << ' ';
+				} else
+					out << std::setw(30-length) << ' ';
+
+				out << m_optionInfo[i].description << std::endl;
 			}
-
-			out << "--" << m_options[i].name;
-			length += m_optionInfo[i].longOption.size() + 2;
-			length += argumentInfo(i, out);
-
-			if (length >= 30) {
-				out << std::endl;
-				out << std::setw(30) << ' ';
-			} else
-				out << std::setw(30-length) << ' ';
-
-			out << m_optionInfo[i].description << std::endl;
 		}
 
 		out << m_customHelpMessage;
