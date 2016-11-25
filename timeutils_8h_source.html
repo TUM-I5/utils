@@ -96,23 +96,28 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00054"></a>00054 <span class="keyword">public</span>:
 <a name="l00062"></a><a class="code" href="classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7">00062</a>         <span class="keyword">static</span> std::string <a class="code" href="classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7">timeAsString</a>(<span class="keyword">const</span> std::string&amp; formatString, time_t time)
 <a name="l00063"></a>00063         {
-<a name="l00064"></a>00064             <span class="keyword">const</span> <span class="keyword">struct </span>tm *timeinfo = localtime(&amp;time);
+<a name="l00064"></a>00064                 <span class="keyword">const</span> <span class="keyword">struct </span>tm *timeinfo = localtime(&amp;time);
 <a name="l00065"></a>00065 
-<a name="l00066"></a>00066             std::string buffer;
-<a name="l00067"></a>00067             buffer.resize(formatString.size()*2);
-<a name="l00068"></a>00068             <span class="keywordtype">size_t</span> len = strftime(&amp;buffer[0], buffer.size(), formatString.c_str(), timeinfo);
-<a name="l00069"></a>00069             <span class="keywordflow">while</span> (len == 0) {
-<a name="l00070"></a>00070                 buffer.resize(buffer.size()*2);
-<a name="l00071"></a>00071                 len = strftime(&amp;buffer[0], buffer.size(), formatString.c_str(), timeinfo);
-<a name="l00072"></a>00072             }
-<a name="l00073"></a>00073             buffer.resize(len);
-<a name="l00074"></a>00074             <span class="keywordflow">return</span> buffer;
+<a name="l00066"></a>00066                 std::string buffer;
+<a name="l00067"></a>00067                 buffer.resize(formatString.size()*2);
+<a name="l00068"></a>00068                 <span class="keywordtype">size_t</span> len = strftime(&amp;buffer[0], buffer.size(), formatString.c_str(), timeinfo);
+<a name="l00069"></a>00069                 <span class="keywordflow">while</span> (len == 0) {
+<a name="l00070"></a>00070                         buffer.resize(buffer.size()*2);
+<a name="l00071"></a>00071                         len = strftime(&amp;buffer[0], buffer.size(), formatString.c_str(), timeinfo);
+<a name="l00072"></a>00072                 }
+<a name="l00073"></a>00073                 buffer.resize(len);
+<a name="l00074"></a>00074                 <span class="keywordflow">return</span> buffer;
 <a name="l00075"></a>00075         }
-<a name="l00076"></a>00076 };
-<a name="l00077"></a>00077 
-<a name="l00078"></a>00078 }
-<a name="l00079"></a>00079 
-<a name="l00080"></a>00080 <span class="preprocessor">#endif </span><span class="comment">/* UTILS_TIMEUTILS_H_ */</span>
+<a name="l00076"></a>00076 
+<a name="l00082"></a><a class="code" href="classutils_1_1TimeUtils.html#aabb5d5b825af756501baafc36d18c1b9">00082</a>         <span class="keyword">static</span> std::string <a class="code" href="classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7">timeAsString</a>(<span class="keyword">const</span> std::string&amp; formatString)
+<a name="l00083"></a>00083         {
+<a name="l00084"></a>00084                 <span class="keywordflow">return</span> <a class="code" href="classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7">timeAsString</a>(formatString, time(0L));
+<a name="l00085"></a>00085         }
+<a name="l00086"></a>00086 };
+<a name="l00087"></a>00087 
+<a name="l00088"></a>00088 }
+<a name="l00089"></a>00089 
+<a name="l00090"></a>00090 <span class="preprocessor">#endif </span><span class="comment">/* UTILS_TIMEUTILS_H_ */</span>
 </pre></div></div><!-- contents -->
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
@@ -131,7 +136,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon May 2 2016 16:42:54 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Fri Nov 25 2016 13:36:05 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>

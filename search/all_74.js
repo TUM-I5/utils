@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['timeasstring',['timeAsString',['../classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7',1,'utils::TimeUtils']]],
+  ['timeasstring',['timeAsString',['../classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7',1,'utils::TimeUtils::timeAsString(const std::string &amp;formatString, time_t time)'],['../classutils_1_1TimeUtils.html#aabb5d5b825af756501baafc36d18c1b9',1,'utils::TimeUtils::timeAsString(const std::string &amp;formatString)']]],
   ['timeutils',['TimeUtils',['../classutils_1_1TimeUtils.html',1,'utils']]],
   ['timeutils_2eh',['timeutils.h',['../timeutils_8h.html',1,'']]],
   ['tolower',['toLower',['../classutils_1_1StringUtils.html#af37b63aeb49ddf4da0458985925857dd',1,'utils::StringUtils::toLower(char *s)'],['../classutils_1_1StringUtils.html#ae3ef3eddbcd106a4465bab1d5e085883',1,'utils::StringUtils::toLower(std::string &amp;str)']]],

@@ -112,6 +112,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <tr><td colspan="2"><h2><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7">timeAsString</a> (const std::string &amp;formatString, time_t time)</td></tr>
+<tr><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classutils_1_1TimeUtils.html#aabb5d5b825af756501baafc36d18c1b9">timeAsString</a> (const std::string &amp;formatString)</td></tr>
 </table>
 <hr/><a name="details" id="details"></a><h2>Detailed Description</h2>
 <div class="textblock"><p>A collection of usefull time functions </p>
@@ -146,6 +147,27 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="aabb5d5b825af756501baafc36d18c1b9"></a><!-- doxytag: member="utils::TimeUtils::timeAsString" ref="aabb5d5b825af756501baafc36d18c1b9" args="(const std::string &amp;formatString)" -->
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">static std::string <a class="el" href="classutils_1_1TimeUtils.html#a6dc4dcc12dedd3cb7c944022d08d12e7">utils::TimeUtils::timeAsString</a> </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>formatString</em></td><td>)</td>
+          <td><code> [inline, static]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Formats a string using strftime</p>
+<p>Taken from <a href="http://stackoverflow.com/questions/7935483/c-function-to-format-time-t-as-stdstring-buffer-length">http://stackoverflow.com/questions/7935483/c-function-to-format-time-t-as-stdstring-buffer-length</a></p>
+<dl class="return"><dt><b>Returns:</b></dt><dd>A copy of formatString, with all k replaced with the time information </dd></dl>
+<p>Returns the formated time for the current time </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>utils/<a class="el" href="timeutils_8h_source.html">timeutils.h</a></li>
 </ul>
@@ -167,7 +189,7 @@ Static Public Member Functions</h2></td></tr>
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon May 2 2016 16:42:54 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Fri Nov 25 2016 13:36:05 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>
