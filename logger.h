@@ -79,7 +79,7 @@ namespace utils
 
 /**
  * Handles debugging/logging output
- * 
+ *
  * Most of the code is taken form QDebug form the Qt Framework
  */
 class Logger
@@ -109,7 +109,7 @@ private:
 		std::stringstream buffer;
 		/** Print additional space */
 		bool space;
-		
+
 		/**
 		 * Set defaults for a debug message
 		 */
@@ -124,7 +124,7 @@ private:
 public:
 	/**
 	 * Start a new Debug message
-	 * 
+	 *
 	 * @param t Type of the message
 	 * @param rank Rank of the current process, only messages form rank
 	 *  0 will be printed
@@ -132,7 +132,7 @@ public:
 	Logger(DebugType t, int rank)
 		: stream(new Stream(t, rank))
 	{
-		stream->buffer << utils::TimeUtils::timeAsString(LOG_PREFIX, time(0L));
+		stream->buffer << utils::TimeUtils::timeAsString(LOG_PREFIX);
 
 		switch (t) {
 		case DEBUG:
@@ -191,7 +191,7 @@ public:
 			delete stream;
 		}
 	}
-	
+
 	/**
 	 * Copy operator
 	 */
@@ -203,10 +203,10 @@ public:
 		}
 		return *this;
 	}
-	
-	
+
+
 	/********* Space handling *********/
-	
+
 	/**
 	 * Add a space to output message and activate spaces
 	 */
@@ -233,7 +233,7 @@ public:
 			stream->buffer << ' ';
 		return *this;
 	}
-	
+
 	/**
 	 * Default function to add messages
 	 */
@@ -313,7 +313,7 @@ class NoLogger
 public:
 	NoLogger() {};
 	~NoLogger() {};
-	
+
 	/**
 	 * Do nothing with the message
 	 */
@@ -356,7 +356,7 @@ inline Logger &operator<<(Logger debug, const std::vector<T> &list)
 		debug << list[i];
 	}
 	debug << ')';
-	
+
 	return debug.space();
 }
 

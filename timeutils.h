@@ -61,17 +61,27 @@ public:
 	 */
 	static std::string timeAsString(const std::string& formatString, time_t time)
 	{
-	    const struct tm *timeinfo = localtime(&time);
+		const struct tm *timeinfo = localtime(&time);
 
-	    std::string buffer;
-	    buffer.resize(formatString.size()*2);
-	    size_t len = strftime(&buffer[0], buffer.size(), formatString.c_str(), timeinfo);
-	    while (len == 0) {
-	        buffer.resize(buffer.size()*2);
-	        len = strftime(&buffer[0], buffer.size(), formatString.c_str(), timeinfo);
-	    }
-	    buffer.resize(len);
-	    return buffer;
+		std::string buffer;
+		buffer.resize(formatString.size()*2);
+		size_t len = strftime(&buffer[0], buffer.size(), formatString.c_str(), timeinfo);
+		while (len == 0) {
+			buffer.resize(buffer.size()*2);
+			len = strftime(&buffer[0], buffer.size(), formatString.c_str(), timeinfo);
+		}
+		buffer.resize(len);
+		return buffer;
+	}
+
+	/**
+	 * @copydoc timeAsString(const std::string&, time_t)
+	 *
+	 * Returns the formated time for the current time
+	 */
+	static std::string timeAsString(const std::string& formatString)
+	{
+		return timeAsString(formatString, time(0L));
 	}
 };
 
