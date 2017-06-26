@@ -46,6 +46,17 @@ class MathUtils
 {
 public:
 	/**
+	 * Finds the smallest value x >= a such that x % k == 0
+	 *
+	 * a and k should be of kind "int".
+	 */
+	template<typename T>
+	static T roundUp(T a, T k)
+	{
+		return ((a + k - 1) / k) * k;
+	}
+
+	/**
 	 * Computes the greatest common divisor of a and b
 	 *
 	 * @param a

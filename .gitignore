@@ -3,5 +3,9 @@
 .project
 .settings
 
+# KDevelop stuff
+.kdev4/
+*.kdev4
+
 doc/html
 build
