@@ -53,9 +53,21 @@ public:
 	 * @return The size (number of elements) of the array
 	 */
 	template<typename T, size_t N>
-	static size_t size(T (&a)[N])
+	static size_t size(const T (&a)[N])
 	{
 		return N;
+	}
+
+	/**
+	 * Size of a zero length static array
+	 *
+	 * @param a The array
+	 * @return 0
+	 */
+	template<typename T>
+	static size_t size(const T (&a)[0])
+	{
+		return 0;
 	}
 
 	/**

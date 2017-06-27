@@ -47,15 +47,18 @@ class TestArgs : public CxxTest::TestSuite
 public:
 	void testSize()
 	{
-		static const char* a0[] = {"a", "b", "c"};
+		const char* a0[] = {"a", "b", "c"};
 		TS_ASSERT_EQUALS(ArrayUtils::size(a0), 3);
 
-		static int a1[] = {1, 2, 3, 4, 5, 6};
+		int a1[] = {1, 2, 3, 4, 5, 6};
 		TS_ASSERT_EQUALS(ArrayUtils::size(a1), 6);
 
-		std::vector<char> a2;
-		a2.push_back('c');
-		a2.push_back('d');
-		TS_ASSERT_EQUALS(ArrayUtils::size(a2), 2);
+		int a2[0];
+		TS_ASSERT_EQUALS(ArrayUtils::size(a2), 0);
+
+		std::vector<char> a3;
+		a3.push_back('c');
+		a3.push_back('d');
+		TS_ASSERT_EQUALS(ArrayUtils::size(a3), 2);
 	}
 };
