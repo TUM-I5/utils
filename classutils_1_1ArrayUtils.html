@@ -113,6 +113,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 Static Public Member Functions</h2></td></tr>
 <tr><td class="memTemplParams" colspan="2">template&lt;typename T , size_t N&gt; </td></tr>
 <tr><td class="memTemplItemLeft" align="right" valign="top">static size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1ArrayUtils.html#a852246e6a2bd4d11134f7a598ae95c8b">size</a> (T(&amp;a)[N])</td></tr>
+<tr><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr><td class="memTemplItemLeft" align="right" valign="top">static size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1ArrayUtils.html#a609cd633d0f31bf5efaabc4b4a063291">size</a> (const T &amp;a)</td></tr>
 </table>
 <hr/><a name="details" id="details"></a><h2>Detailed Description</h2>
 <div class="textblock"><p>Collection of useful functions for arrays </p>
@@ -144,6 +146,33 @@ template&lt;typename T , size_t N&gt; </div>
 
 </div>
 </div>
+<a class="anchor" id="a609cd633d0f31bf5efaabc4b4a063291"></a><!-- doxytag: member="utils::ArrayUtils::size" ref="a609cd633d0f31bf5efaabc4b4a063291" args="(const T &amp;a)" -->
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">static size_t <a class="el" href="classutils_1_1ArrayUtils.html#a852246e6a2bd4d11134f7a598ae95c8b">utils::ArrayUtils::size</a> </td>
+          <td>(</td>
+          <td class="paramtype">const T &amp;&#160;</td>
+          <td class="paramname"><em>a</em></td><td>)</td>
+          <td><code> [inline, static]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Size of a container</p>
+<dl class="params"><dt><b>Parameters:</b></dt><dd>
+  <table class="params">
+    <tr><td class="paramname">a</td><td>A container of any type</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="note"><dt><b>Note:</b></dt><dd>This function has the same signature as the function for static arrays and can be used with automatic template argument deduction. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>utils/<a class="el" href="arrayutils_8h_source.html">arrayutils.h</a></li>
 </ul>
@@ -165,7 +194,7 @@ template&lt;typename T , size_t N&gt; </div>
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Mon Jun 26 2017 11:02:50 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Jun 27 2017 19:08:36 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>
