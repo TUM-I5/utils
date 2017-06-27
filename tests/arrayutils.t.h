@@ -4,7 +4,7 @@
  *
  * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
  *
- * @copyright Copyright (c) 2015, Technische Universitaet Muenchen.
+ * @copyright Copyright (c) 2015-2017, Technische Universitaet Muenchen.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,8 @@
 
 #include <cxxtest/TestSuite.h>
 
+#include <vector>
+
 #include "utils/arrayutils.h"
 
 using namespace utils;
@@ -50,5 +52,10 @@ public:
 
 		static int a1[] = {1, 2, 3, 4, 5, 6};
 		TS_ASSERT_EQUALS(ArrayUtils::size(a1), 6);
+
+		std::vector<char> a2;
+		a2.push_back('c');
+		a2.push_back('d');
+		TS_ASSERT_EQUALS(ArrayUtils::size(a2), 2);
 	}
 };

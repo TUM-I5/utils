@@ -4,7 +4,7 @@
  *
  * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
  *
- * @copyright Copyright (c) 2015, Technische Universitaet Muenchen.
+ * @copyright Copyright (c) 2015-2017, Technische Universitaet Muenchen.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -56,6 +56,20 @@ public:
 	static size_t size(T (&a)[N])
 	{
 		return N;
+	}
+
+	/**
+	 * Size of a container
+	 *
+	 * @param a A container of any type
+	 *
+	 * @note This function has the same signature as the function for
+	 *  static arrays and can be used with automatic template argument deduction.
+	 */
+	template<typename T>
+	static size_t size(const T &a)
+	{
+		return a.size();
 	}
 };
 
