@@ -112,23 +112,25 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <tr><td colspan="2"><h2><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr><td class="memTemplParams" colspan="2">template&lt;typename T , size_t N&gt; </td></tr>
-<tr><td class="memTemplItemLeft" align="right" valign="top">static size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1ArrayUtils.html#a852246e6a2bd4d11134f7a598ae95c8b">size</a> (T(&amp;a)[N])</td></tr>
+<tr><td class="memTemplItemLeft" align="right" valign="top">static size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1ArrayUtils.html#a649f614fe51519752ecba170c11c23b6">size</a> (const T(&amp;a)[N])</td></tr>
+<tr><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr><td class="memTemplItemLeft" align="right" valign="top">static size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1ArrayUtils.html#a38ce5092276bd6b9a983b3a576f0c557">size</a> (const T(&amp;a)[0])</td></tr>
 <tr><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
 <tr><td class="memTemplItemLeft" align="right" valign="top">static size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classutils_1_1ArrayUtils.html#a609cd633d0f31bf5efaabc4b4a063291">size</a> (const T &amp;a)</td></tr>
 </table>
 <hr/><a name="details" id="details"></a><h2>Detailed Description</h2>
 <div class="textblock"><p>Collection of useful functions for arrays </p>
 </div><hr/><h2>Member Function Documentation</h2>
-<a class="anchor" id="a852246e6a2bd4d11134f7a598ae95c8b"></a><!-- doxytag: member="utils::ArrayUtils::size" ref="a852246e6a2bd4d11134f7a598ae95c8b" args="(T(&amp;a)[N])" -->
+<a class="anchor" id="a649f614fe51519752ecba170c11c23b6"></a><!-- doxytag: member="utils::ArrayUtils::size" ref="a649f614fe51519752ecba170c11c23b6" args="(const T(&amp;a)[N])" -->
 <div class="memitem">
 <div class="memproto">
 <div class="memtemplate">
 template&lt;typename T , size_t N&gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">static size_t <a class="el" href="classutils_1_1ArrayUtils.html#a852246e6a2bd4d11134f7a598ae95c8b">utils::ArrayUtils::size</a> </td>
+          <td class="memname">static size_t <a class="el" href="classutils_1_1ArrayUtils.html#a649f614fe51519752ecba170c11c23b6">utils::ArrayUtils::size</a> </td>
           <td>(</td>
-          <td class="paramtype">T(&amp;)&#160;</td>
+          <td class="paramtype">const T(&amp;)&#160;</td>
           <td class="paramname"><em>a</em>[N]</td><td>)</td>
           <td><code> [inline, static]</code></td>
         </tr>
@@ -146,6 +148,33 @@ template&lt;typename T , size_t N&gt; </div>
 
 </div>
 </div>
+<a class="anchor" id="a38ce5092276bd6b9a983b3a576f0c557"></a><!-- doxytag: member="utils::ArrayUtils::size" ref="a38ce5092276bd6b9a983b3a576f0c557" args="(const T(&amp;a)[0])" -->
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">static size_t <a class="el" href="classutils_1_1ArrayUtils.html#a649f614fe51519752ecba170c11c23b6">utils::ArrayUtils::size</a> </td>
+          <td>(</td>
+          <td class="paramtype">const T(&amp;)&#160;</td>
+          <td class="paramname"><em>a</em>[0]</td><td>)</td>
+          <td><code> [inline, static]</code></td>
+        </tr>
+      </table>
+</div>
+<div class="memdoc">
+<p>Size of a zero length static array</p>
+<dl class="params"><dt><b>Parameters:</b></dt><dd>
+  <table class="params">
+    <tr><td class="paramname">a</td><td>The array </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="return"><dt><b>Returns:</b></dt><dd>0 </dd></dl>
+
+</div>
+</div>
 <a class="anchor" id="a609cd633d0f31bf5efaabc4b4a063291"></a><!-- doxytag: member="utils::ArrayUtils::size" ref="a609cd633d0f31bf5efaabc4b4a063291" args="(const T &amp;a)" -->
 <div class="memitem">
 <div class="memproto">
@@ -153,7 +182,7 @@ template&lt;typename T , size_t N&gt; </div>
 template&lt;typename T &gt; </div>
       <table class="memname">
         <tr>
-          <td class="memname">static size_t <a class="el" href="classutils_1_1ArrayUtils.html#a852246e6a2bd4d11134f7a598ae95c8b">utils::ArrayUtils::size</a> </td>
+          <td class="memname">static size_t <a class="el" href="classutils_1_1ArrayUtils.html#a649f614fe51519752ecba170c11c23b6">utils::ArrayUtils::size</a> </td>
           <td>(</td>
           <td class="paramtype">const T &amp;&#160;</td>
           <td class="paramname"><em>a</em></td><td>)</td>
@@ -194,7 +223,7 @@ template&lt;typename T &gt; </div>
 
 
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Jun 27 2017 19:08:36 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Jun 27 2017 19:17:11 for C++ Utils by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.7.6.1
 </small></address>
