@@ -37,6 +37,8 @@
 #ifndef UTILS_ARRAYUTILS_H
 #define UTILS_ARRAYUTILS_H
 
+#include "common.h"
+
 namespace utils
 {
 
@@ -79,7 +81,7 @@ public:
 	 *  static arrays and can be used with automatic template argument deduction.
 	 */
 	template<typename T>
-	static typename std::enable_if<utils::has_size<T>::value, size_t>::type
+	static typename std::enable_if<has_size<T>::value, size_t>::type
 	size(const T &a)
 	{
 		return a.size();
