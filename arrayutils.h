@@ -65,7 +65,7 @@ public:
 	 * @return 0
 	 */
 	template<typename T>
-	static size_t size(const T (&a)[0])
+	static size_t size(const T*)
 	{
 		return 0;
 	}
@@ -79,7 +79,8 @@ public:
 	 *  static arrays and can be used with automatic template argument deduction.
 	 */
 	template<typename T>
-	static size_t size(const T &a)
+	static typename std::enable_if<utils::has_size<T>::value, size_t>::type
+	size(const T &a)
 	{
 		return a.size();
 	}

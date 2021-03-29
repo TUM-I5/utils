@@ -36,6 +36,7 @@ set( CMAKE_MODULE_PATH
 	${CMAKE_SOURCE_DIR}/submodules/cxxtest/build_tools/cmake
 	${CMAKE_MODULE_PATH} )
 
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pedantic -Werror")
 # Get cxxtest
 # TODO support installations without cxxtest
 find_package( CxxTest REQUIRED )
