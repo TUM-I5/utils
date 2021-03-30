@@ -53,7 +53,10 @@ public:
 		int a1[] = {1, 2, 3, 4, 5, 6};
 		TS_ASSERT_EQUALS(ArrayUtils::size(a1), 6);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 		int a2[0];
+#pragma GCC diagnostic pop
 		TS_ASSERT_EQUALS(ArrayUtils::size(a2), 0);
 
 		std::vector<char> a3;

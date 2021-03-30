@@ -48,6 +48,13 @@ void swap(T& a, T& b)
 	b = tmp;
 }
 
+template<typename T>
+struct has_size {
+	template<typename U> static constexpr decltype(std::declval<U>().size(), bool()) test(int) { return true; }
+	template<typename U> static constexpr bool test(...) { return false; }
+	static constexpr bool value = test<T>(int());
+};
+
 }
 
 #endif // UTILS_COMMON_H
