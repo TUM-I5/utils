@@ -88,13 +88,13 @@ public:
 	/** Message type */
 	enum DebugType {
 		/** A debug messages */
-		DEBUG,
+		LOG_DEBUG,
 		/** A info message (printed to stdout) */
-		INFO,
+		LOG_INFO,
 		/** A warning message */
-		WARNING,
+		LOG_WARNING,
 		/** A fatal error */
-		ERROR
+		LOG_ERROR
 	};
 private:
 	/** Contains all information for a debug message */
@@ -135,16 +135,16 @@ public:
 		stream->buffer << utils::TimeUtils::timeAsString(LOG_PREFIX);
 
 		switch (t) {
-		case DEBUG:
+		case LOG_DEBUG:
 			stream->buffer << ", Debug: ";
 			break;
-		case INFO:
+		case LOG_INFO:
 			stream->buffer << ", Info:  ";
 			break;
-		case WARNING:
+		case LOG_WARNING:
 			stream->buffer << ", Warn:  ";
 			break;
-		case ERROR:
+		case LOG_ERROR:
 			stream->buffer << ", Error: ";
 			break;
 		}
@@ -157,13 +157,13 @@ public:
 	{
 		if (!--stream->ref) {
 			if (stream->rank == 0) {
-				if (stream->type == INFO)
+				if (stream->type == LOG_INFO)
 					std::cout << stream->buffer.str() << std::endl;
 				else
 					std::cerr << stream->buffer.str() << std::endl;
 			}
 
-			if (stream->type == ERROR) {
+			if (stream->type == LOG_ERROR) {
 				delete stream;
 				stream = 0L;	// Avoid double free if LOG_ABORT does
 								// does not exit the program
@@ -372,7 +372,7 @@ inline Logger &operator<<(Logger debug, const std::vector<T> &list)
 inline
 utils::Logger logError()
 {
-	return utils::Logger(utils::Logger::ERROR, 0);
+	return utils::Logger(utils::Logger::LOG_ERROR, 0);
 }
 
 #if LOG_LEVEL >= 1
@@ -384,7 +384,7 @@ utils::Logger logError()
 inline
 utils::Logger logWarning( int rank = 0 )
 {
-	return utils::Logger(utils::Logger::WARNING, rank);
+	return utils::Logger(utils::Logger::LOG_WARNING, rank);
 }
 #else // LOG_LEVEL >= 1
 /**
@@ -405,7 +405,7 @@ utils::NoLogger logWarning( int = 0 ) { return utils::NoLogger(); }
 inline
 utils::Logger logInfo( int rank = 0 )
 {
-	return utils::Logger(utils::Logger::INFO, rank);
+	return utils::Logger(utils::Logger::LOG_INFO, rank);
 }
 #else // LOG_LEVEL >= 2
 /**
@@ -426,7 +426,7 @@ utils::NoLogger logInfo( int = 0 ) { return utils::NoLogger(); }
 inline
 utils::Logger logDebug( int rank = 0 )
 {
-	return utils::Logger(utils::Logger::DEBUG, rank);
+	return utils::Logger(utils::Logger::LOG_DEBUG, rank);
 }
 #else // LOG_LEVEL >= 3
 /**
