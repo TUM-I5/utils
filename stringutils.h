@@ -193,7 +193,8 @@ public:
 	 * Taken from http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 	 */
 	static std::string &ltrim(std::string &s) {
-	        s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+	        auto f = [](int x) { return !std::isspace(x); };
+	        s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
 	        return s;
 	}
 
@@ -203,7 +204,8 @@ public:
 	 * Taken from http://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 	 */
 	static std::string &rtrim(std::string &s) {
-	        s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+	        auto f = [](int x) { return !std::isspace(x); };
+	        s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
 	        return s;
 	}
 
