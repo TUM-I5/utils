@@ -55,6 +55,15 @@
 #endif // NDEBUG
 #endif // LOG_LEVEL
 
+#ifndef LOGLEVEL0
+#define LOGLEVEL0 LOG_LEVEL
+#endif // LOGLEVEL0
+
+#ifndef LOGLEVEL
+#define LOGLEVEL LOG_LEVEL
+#endif // LOGLEVEL
+
+
 #ifndef LOG_PREFIX
 #define LOG_PREFIX "%a %b %d %X"
 #endif // DEBUG_PRFIX
@@ -132,7 +141,7 @@ public:
 	Logger(DebugType t, int rank)
 		: stream(new Stream(t, rank))
 	{
-		stream->buffer << utils::TimeUtils::timeAsString(LOG_PREFIX);
+		stream->buffer << rank << " " << utils::TimeUtils::timeAsString(LOG_PREFIX);
 
 		switch (t) {
 		case LOG_DEBUG:
@@ -156,12 +165,21 @@ public:
 	~Logger()
 	{
 		if (!--stream->ref) {
-			if (stream->rank == 0) {
-				if (stream->type == LOG_INFO)
+			if (stream->type == LOG_INFO) {
+#if LOGLEVEL >= 2
+				std::cout << stream->buffer.str() << std::endl;
+#else
+				if (stream->rank == 0)
 					std::cout << stream->buffer.str() << std::endl;
-				else
+#endif
+				} else {
+#if LOGLEVEL >= 1
 					std::cerr << stream->buffer.str() << std::endl;
-			}
+#else
+				if (stream->rank == 0)
+					std::cerr << stream->buffer.str() << std::endl;
+#endif
+			    }
 
 			if (stream->type == LOG_ERROR) {
 				delete stream;
@@ -375,7 +393,7 @@ utils::Logger logError()
 	return utils::Logger(utils::Logger::LOG_ERROR, 0);
 }
 
-#if LOG_LEVEL >= 1
+#if LOGLEVEL0 >= 1
 /**
  * Create a warning message if enabled
  *
@@ -386,7 +404,7 @@ utils::Logger logWarning( int rank = 0 )
 {
 	return utils::Logger(utils::Logger::LOG_WARNING, rank);
 }
-#else // LOG_LEVEL >= 1
+#else // LOGLEVEL0 >= 1
 /**
  * Create a dummy warning message if disabled
  *
@@ -394,9 +412,9 @@ utils::Logger logWarning( int rank = 0 )
  */
 inline
 utils::NoLogger logWarning( int = 0 ) { return utils::NoLogger(); }
-#endif // LOG_LEVEL >= 1
+#endif // LOGLEVEL0 >= 1
 
-#if LOG_LEVEL >= 2
+#if LOGLEVEL0 >= 2
 /**
  * Create a info message if enabled
  *
@@ -407,7 +425,7 @@ utils::Logger logInfo( int rank = 0 )
 {
 	return utils::Logger(utils::Logger::LOG_INFO, rank);
 }
-#else // LOG_LEVEL >= 2
+#else // LOGLEVEL0 >= 2
 /**
  * Create a dummy info message if disabled
  *
@@ -415,9 +433,9 @@ utils::Logger logInfo( int rank = 0 )
  */
 inline
 utils::NoLogger logInfo( int = 0 ) { return utils::NoLogger(); }
-#endif // LOG_LEVEL >= 2
+#endif // LOGLEVEL0 >= 2
 
-#if LOG_LEVEL >= 3
+#if LOGLEVEL0 >= 3
 /**
  * Create a debug message if enabled
  *
@@ -428,7 +446,7 @@ utils::Logger logDebug( int rank = 0 )
 {
 	return utils::Logger(utils::Logger::LOG_DEBUG, rank);
 }
-#else // LOG_LEVEL >= 3
+#else // LOGLEVEL0 >= 3
 /**
  * Create a dummy debug message if disabled
  *
@@ -436,7 +454,7 @@ utils::Logger logDebug( int rank = 0 )
  */
 inline
 utils::NoLogger logDebug( int = 0 ) { return utils::NoLogger(); }
-#endif // LOG_LEVEL >= 3
+#endif // LOGLEVEL0 >= 3
 
 
 // Use for variables unused when compiling with NDEBUG
