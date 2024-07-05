@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2015, Technische Universitaet Muenchen
+# Copyright (c) 2014-2024, Technische Universitaet Muenchen
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,14 +27,22 @@
 # ARISING IN ANY WAY OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required( VERSION 2.8 )
+cmake_minimum_required(VERSION 3.13)
 
-project( Utils )
+project(utils)
 
-# Enable testing
-enable_testing()
+add_library(utils INTERFACE)
 
-# Make sure we find the header files with #include "utils/..."
-include_directories( ${CMAKE_SOURCE_DIR}/.. )
+set_property(TARGET utils PROPERTY CXX_STANDARD 17)
 
-add_subdirectory( tests )
+# Make sure we find the header files with #include "utils/..." (TODO: don't)
+target_include_directories(utils INTERFACE ${CMAKE_SOURCE_DIR}/..)
+
+option(TESTING "Build unit tests" OFF)
+
+if (TESTING)
+  # Enable testing
+  enable_testing()
+
+  add_subdirectory( tests )
+endif()

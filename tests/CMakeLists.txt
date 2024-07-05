@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2015, Technische Universitaet Muenchen
+# Copyright (c) 2014-2024, Technische Universitaet Muenchen
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,20 +27,16 @@
 # ARISING IN ANY WAY OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# Add cxxtest pathes
-set( CXXTEST_PATH ${CMAKE_SOURCE_DIR}/submodules/cxxtest )
-set( CMAKE_INCLUDE_PATH
-    ${CMAKE_SOURCE_DIR}/submodules/cxxtest
-    ${CMAKE_INCLUDE_PATH} )
-set( CMAKE_MODULE_PATH
-	${CMAKE_SOURCE_DIR}/submodules/cxxtest/build_tools/cmake
-	${CMAKE_MODULE_PATH} )
-
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pedantic -Werror -std=c++14")
-# Get cxxtest
-# TODO support installations without cxxtest
 find_package( CxxTest REQUIRED )
-include_directories( ${CXXTEST_INCLUDES} )
+include_directories( ${CXXTEST_INCLUDE_DIR} )
+
+function( cxx_test target source )
+    get_filename_component(CPP_FILE_NAME ${source} NAME)
+    string(REGEX REPLACE "h$|hpp$" "cpp" CPP_FILE_NAME ${CPP_FILE_NAME})
+    set(CPP_FULL_NAME "${CMAKE_CURRENT_BINARY_DIR}/${CPP_FILE_NAME}")
+    CXXTEST_ADD_TEST( ${target} "${CPP_FULL_NAME}" ${source} )
+    target_link_libraries( ${target} PRIVATE utils )
+endfunction( cxx_test )
 
 # Add tests
 cxx_test( TestArgs ${CMAKE_CURRENT_SOURCE_DIR}/args.t.h )
