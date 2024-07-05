@@ -12,8 +12,3 @@ License
 -------
 
 UTILS is released under BSD-3 (see [COPYING](COPYING))
-
-Build Status
-------------
-
-[![Build Status](https://travis-ci.org/TUM-I5/utils.svg?branch=master)](https://travis-ci.org/TUM-I5/utils)
