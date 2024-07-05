@@ -1,0 +1,29 @@
+name: unittest
+on:
+  - push
+
+jobs:
+  unittest:
+    name: unittest
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: install-packages
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:deadsnakes/ppa
+          sudo apt-get install -y libomp-dev libopenmpi-dev openmpi-bin openmpi-common ninja-build
+          sudo apt-get install -y cxxtest
+
+      - name: build
+        run: |
+          mkdir build
+          cd build
+          cmake .. -GNinja -DTESTING=ON
+          ninja
+          ninja test
+          cd ..
