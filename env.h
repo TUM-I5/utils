@@ -68,17 +68,18 @@ public:
       }
     }
 
-	const auto value = cache.at(name);
-	if (cache.at(name).has_value()) {
-		return std::make_optional<T>(StringUtils::parse<T>(value.value()));
-	}
-	else {
-		return std::optional<T>();
-	}
+    const auto value = cache.at(name);
+    if (cache.at(name).has_value()) {
+      return std::make_optional<T>(StringUtils::parse<T>(value.value()));
+    } else {
+      return std::optional<T>();
+    }
   }
 
-  template <typename T> static std::enable_if_t<!std::is_array_v<T>,T> get(const std::string &name, T&& defaultVal) {
-	// mirror requirements for an optional
+  template <typename T>
+  static std::enable_if_t<!std::is_array_v<T>, T> get(const std::string &name,
+                                                      T &&defaultVal) {
+    // mirror requirements for an optional
     const auto value = getOptional<T>(name);
 
     if (value.has_value()) {
@@ -88,7 +89,9 @@ public:
     }
   }
 
-  template <typename T> static std::enable_if_t<std::is_convertible_v<T*, std::string>,std::string> get(const std::string &name, const T* defaultVal) {
+  template <typename T>
+  static std::enable_if_t<std::is_convertible_v<T *, std::string>, std::string>
+  get(const std::string &name, const T *defaultVal) {
     const auto value = getOptional<std::string>(name);
 
     if (value.has_value()) {
