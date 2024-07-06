@@ -45,7 +45,7 @@ public:
   void testParseAdditional() {
     const char *argv[] = {"prog", "1", "2", "3"};
 
-    Args args1;
+    Args args1("");
     args1.addAdditionalOption("test1", "", true);
     args1.addAdditionalOption("test2", "", true);
     args1.addAdditionalOption("test3", "", true);
@@ -53,7 +53,7 @@ public:
     args1.parse(4, const_cast<char **>(argv), false);
     TS_ASSERT_EQUALS(args1.getAdditionalArgument<int>("test2"), 2);
 
-    Args args2;
+    Args args2("");
     args2.addAdditionalOption("test1", "", true);
     args2.addAdditionalOption("test2", "", true);
 
