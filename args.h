@@ -39,489 +39,456 @@
 
 #include "utils/stringutils.h"
 
-#include <getopt.h>
 #include <algorithm>
-#include <map>
+#include <getopt.h>
 #include <iomanip>
 #include <iostream>
-#include <string>
+#include <map>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
-namespace utils
-{
+namespace utils {
 
 /**
  * Parses command line arguments
  * @todo comment functions
  */
-class Args
-{
+class Args {
 private:
-	struct optionInfo {
-		/** Leave empty if this not an enum option */
-		std::vector<std::string> enumValues;
-		std::string longOption;		// We need a copy here to get the const char* correct
-		/** Name of the value in the help command */
-		std::string value;
-		std::string description;
-		bool required;
-	};
+  struct optionInfo {
+    /** Leave empty if this not an enum option */
+    std::vector<std::string> enumValues;
+    std::string
+        longOption; // We need a copy here to get the const char* correct
+    /** Name of the value in the help command */
+    std::string value;
+    std::string description;
+    bool required;
+  };
 
-	struct additionalOptionInfo {
-		std::string name;
-		std::string description;
-		bool required;
-	};
+  struct additionalOptionInfo {
+    std::string name;
+    std::string description;
+    bool required;
+  };
 
-	/**
-	 * Convert a long option into an "argument" that is shown in the help message
-	 */
-	struct valueConvert {
-		void operator()(char& c)
-		{
-			c = toupper(static_cast<unsigned char>(c));
-			switch (c) {
-			case '-':
-				c = '_';
-				break;
-			}
-		}
-	};
+  /**
+   * Convert a long option into an "argument" that is shown in the help message
+   */
+  struct valueConvert {
+    void operator()(char &c) {
+      c = toupper(static_cast<unsigned char>(c));
+      switch (c) {
+      case '-':
+        c = '_';
+        break;
+      }
+    }
+  };
 
-	/** Program description (can be empty) */
-	const std::string m_description;
-	/** Automatically add help option */
-	const bool m_addHelp;
+  /** Program description (can be empty) */
+  const std::string m_description;
+  /** Automatically add help option */
+  const bool m_addHelp;
 
-	/** The command line arguments */
-	std::vector<struct option> m_options;
-	/**
-	 * Additional information for the command line arguments
-	 * required to generate help information
-	 */
-	std::vector<optionInfo> m_optionInfo;
+  /** The command line arguments */
+  std::vector<struct option> m_options;
+  /**
+   * Additional information for the command line arguments
+   * required to generate help information
+   */
+  std::vector<optionInfo> m_optionInfo;
 
-	std::vector<additionalOptionInfo> m_additionalOptionInfo;
+  std::vector<additionalOptionInfo> m_additionalOptionInfo;
 
-	/** Maps from short option to index in m_options */
-	std::unordered_map<char, size_t> m_short2option;
+  /** Maps from short option to index in m_options */
+  std::unordered_map<char, size_t> m_short2option;
 
-	/** Contains the arguments after parse was called */
-	std::unordered_map<std::string, std::string> m_arguments;
+  /** Contains the arguments after parse was called */
+  std::unordered_map<std::string, std::string> m_arguments;
 
-	/**
-	 * Contains additional arguments after parse was called
-	 * @todo Find a better name
-	 */
-	std::unordered_map<std::string, std::string> m_additionalArguments;
+  /**
+   * Contains additional arguments after parse was called
+   * @todo Find a better name
+   */
+  std::unordered_map<std::string, std::string> m_additionalArguments;
 
-	/** Additional user-defined help message */
-	std::string m_customHelpMessage;
+  /** Additional user-defined help message */
+  std::string m_customHelpMessage;
 
 public:
-	enum Argument
-	{
-		Required = required_argument,
-		No = no_argument,
-		Optional = optional_argument
-	};
+  enum Argument {
+    Required = required_argument,
+    No = no_argument,
+    Optional = optional_argument
+  };
 
-	enum Result
-	{
-		Success = 0,
-		Error,
-		/** Help message printed */
-		Help
-	};
+  enum Result {
+    Success = 0,
+    Error,
+    /** Help message printed */
+    Help
+  };
 
 public:
-	Args(const std::string &description, bool addHelp = true)
-		: m_description(description),
-		  m_addHelp(addHelp)
-	{
-	}
+  Args(const std::string &description, bool addHelp = true)
+      : m_description(description), m_addHelp(addHelp) {}
 
-	void addOption(const std::string &longOption,
-			char shortOption,
-			const std::string &description,
-			Argument argument = Required,
-			bool required = true)
-	{
-		addOptionInternal(longOption, shortOption, description, argument, required);
-	}
+  void addOption(const std::string &longOption, char shortOption,
+                 const std::string &description, Argument argument = Required,
+                 bool required = true) {
+    addOptionInternal(longOption, shortOption, description, argument, required);
+  }
 
-	/**
-	 * @param enumValues Use enumStart() and enumEnd() for easy char array conversion
-	 */
-	template<size_t N>
-	[[deprecated]] void addEnumOption(const std::string &longOption,
-			const char* (&enumValues)[N],
-			char shortOption,
-			const std::string &description,
-			bool required = true)
-	{
-		std::vector<std::string> values(enumValues, end(enumValues));
+  /**
+   * @param enumValues Use enumStart() and enumEnd() for easy char array
+   * conversion
+   */
+  template <size_t N>
+  [[deprecated]] void
+  addEnumOption(const std::string &longOption, const char *(&enumValues)[N],
+                char shortOption, const std::string &description,
+                bool required = true) {
+    std::vector<std::string> values(enumValues, end(enumValues));
 
-		std::string value = "{" + StringUtils::join(values, "|") + "}";
+    std::string value = "{" + StringUtils::join(values, "|") + "}";
 
-		addOptionInternal(longOption, shortOption, description, Required, required,
-				value, values);
+    addOptionInternal(longOption, shortOption, description, Required, required,
+                      value, values);
+  }
 
+  void addEnumOption(const std::string &longOption,
+                     const std::vector<std::string> &values, char shortOption,
+                     const std::string &description, bool required = true) {
+    std::string value = "{" + StringUtils::join(values, "|") + "}";
 
-	}
+    addOptionInternal(longOption, shortOption, description, Required, required,
+                      value, values);
+  }
 
-	void addEnumOption(const std::string &longOption,
-			const std::vector<std::string>& values,
-			char shortOption,
-			const std::string &description,
-			bool required = true)
-	{
-		std::string value = "{" + StringUtils::join(values, "|") + "}";
+  void addAdditionalOption(const std::string &name,
+                           const std::string &description,
+                           bool required = true) {
+    if (!m_additionalOptionInfo.empty()) {
+      if (required && !m_additionalOptionInfo.back().required) {
+        // After one optional argument there can only be more optional arguments
+        return;
+      }
+    }
 
-		addOptionInternal(longOption, shortOption, description, Required, required,
-				value, values);
-	}
+    struct additionalOptionInfo i = {name, description, required};
+    m_additionalOptionInfo.push_back(i);
+  }
 
-	void addAdditionalOption(const std::string &name,
-			const std::string &description,
-			bool required = true)
-	{
-		if (!m_additionalOptionInfo.empty()) {
-			if (required && !m_additionalOptionInfo.back().required) {
-				// After one optional argument there can only be more optional arguments
-				return;
-			}
-		}
+  /**
+   * Set a help message that is added to the parameter explanation
+   */
+  void setCustomHelpMessage(const std::string &message) {
+    m_customHelpMessage = message;
+  }
 
-		struct additionalOptionInfo i = {name, description, required};
-		m_additionalOptionInfo.push_back(i);
-	}
+  /**
+   * @return True of options are successfully parsed, false otherwise
+   */
+  Result parse(int argc, char *const *argv, bool printHelp = true) {
+    if (m_addHelp) {
+      addOption("help", 'h', "Show this help message", No, false);
+    }
 
-	/**
-	 * Set a help message that is added to the parameter explanation
-	 */
-	void setCustomHelpMessage(const std::string &message)
-	{
-		m_customHelpMessage = message;
-	}
+    std::ostringstream shortOptions;
+    for (const auto &option : m_options) {
+      if (option.val != 0) {
+        shortOptions << static_cast<char>(option.val);
+        switch (option.has_arg) {
+        case required_argument:
+          shortOptions << ':';
+          break;
+        case optional_argument:
+          shortOptions << "::";
+          break;
+        }
+      }
+    }
 
-	/**
-	 * @return True of options are successfully parsed, false otherwise
-	 */
-	Result parse(int argc, char* const* argv, bool printHelp = true)
-	{
-		if (m_addHelp) {
-			addOption("help", 'h', "Show this help message", No, false);
-		}
+    // Add null option
+    struct option o = {0, 0, 0, 0};
+    m_options.push_back(o);
 
-		std::ostringstream shortOptions;
-		for (const auto& option : m_options) {
-			if (option.val != 0) {
-				shortOptions << static_cast<char>(option.val);
-				switch (option.has_arg)
-				{
-				case required_argument:
-					shortOptions << ':';
-					break;
-				case optional_argument:
-					shortOptions << "::";
-					break;
-				}
-			}
-		}
+    // Update const char* in m_options
+    for (size_t i = 0; i < m_optionInfo.size(); i++) {
+      m_options[i].name = m_optionInfo[i].longOption.c_str();
+    }
 
-		// Add null option
-		struct option o = {0, 0, 0, 0};
-		m_options.push_back(o);
+    while (true) {
+      int optionIndex = 0;
 
-		// Update const char* in m_options
-		for (size_t i = 0; i < m_optionInfo.size(); i++) {
-			m_options[i].name = m_optionInfo[i].longOption.c_str();
-		}
+      int c = getopt_long(argc, argv, shortOptions.str().c_str(), &m_options[0],
+                          &optionIndex);
 
-		while (true) {
-			int optionIndex = 0;
+      if (c < 0)
+        break;
 
-			int c = getopt_long(argc, argv, shortOptions.str().c_str(),
-				&m_options[0], &optionIndex);
+      switch (c) {
+      case '?':
+        if (printHelp)
+          helpMessage(argv[0], std::cerr);
+        return Error;
+      case 0:
+        // Nothing to do
+        break;
+      default:
+        optionIndex = m_short2option.at(c);
+      }
 
-			if (c < 0)
-				break;
+      if (optarg == 0L)
+        m_arguments[m_options[optionIndex].name] = "";
+      else
+        m_arguments[m_options[optionIndex].name] = optarg;
 
-			switch (c) {
-			case '?':
-				if (printHelp)
-					helpMessage(argv[0], std::cerr);
-				return Error;
-			case 0:
-				// Nothing to do
-				break;
-			default:
-				optionIndex = m_short2option.at(c);
-			}
+      if (!m_optionInfo[optionIndex].enumValues.empty()) {
+        const auto i = std::find(m_optionInfo[optionIndex].enumValues.begin(),
+                                 m_optionInfo[optionIndex].enumValues.end(),
+                                 m_arguments[m_options[optionIndex].name]);
+        if (i == m_optionInfo[optionIndex].enumValues.end()) {
+          if (printHelp) {
+            std::cerr << argv[0] << ": option --" << m_options[optionIndex].name
+                      << " must be set to " << m_optionInfo[optionIndex].value
+                      << std::endl;
+            helpMessage(argv[0], std::cerr);
+          }
+          return Error;
+        }
 
-			if (optarg == 0L)
-				m_arguments[m_options[optionIndex].name] = "";
-			else
-				m_arguments[m_options[optionIndex].name] = optarg;
+        m_arguments[m_options[optionIndex].name] = StringUtils::toString(
+            i - m_optionInfo[optionIndex].enumValues.begin());
+      }
+    }
 
-			if (!m_optionInfo[optionIndex].enumValues.empty()) {
-				const auto i =
-					std::find(m_optionInfo[optionIndex].enumValues.begin(),
-							m_optionInfo[optionIndex].enumValues.end(),
-							m_arguments[m_options[optionIndex].name]);
-				if (i == m_optionInfo[optionIndex].enumValues.end()) {
-					if (printHelp) {
-						std::cerr << argv[0] << ": option --" << m_options[optionIndex].name
-								<< " must be set to " << m_optionInfo[optionIndex].value << std::endl;
-						helpMessage(argv[0], std::cerr);
-					}
-					return Error;
-				}
+    if (m_addHelp && isSet("help")) {
+      if (printHelp) {
+        helpMessage(argv[0]);
+      }
+      return Help;
+    }
 
-				m_arguments[m_options[optionIndex].name]
-				    = StringUtils::toString(i-m_optionInfo[optionIndex].enumValues.begin());
-			}
-		}
+    for (const auto &info : m_optionInfo) {
+      if (info.required && !isSet(info.longOption)) {
+        if (printHelp) {
+          std::cerr << argv[0] << ": option --" << info.longOption
+                    << " is required" << std::endl;
+          helpMessage(argv[0], std::cerr);
+        }
+        return Error;
+      }
+    }
 
-		if (m_addHelp && isSet("help")) {
-			if (printHelp) {
-				helpMessage(argv[0]);
-			}
-			return Help;
-		}
+    // Parse additional options and check if all required options are set
+    int i;
+    for (i = 0; i < argc - optind; i++) {
+      if (i >= static_cast<int>(m_additionalOptionInfo.size())) {
+        if (printHelp) {
+          std::cerr << argv[0] << ": ignoring unknown parameter \""
+                    << argv[i + optind] << "\"" << std::endl;
+        }
+      } else {
+        m_additionalArguments[m_additionalOptionInfo[i].name] =
+            argv[i + optind];
+      }
+    }
+    if (static_cast<size_t>(i) < m_additionalOptionInfo.size()) {
+      if (m_additionalOptionInfo[i].required) {
+        if (printHelp) {
+          std::cerr << argv[0] << ": option <" << m_additionalOptionInfo[i].name
+                    << "> is required" << std::endl;
+          helpMessage(argv[0], std::cerr);
+        }
+        return Error;
+      }
+    }
 
-		for (const auto& info : m_optionInfo) {
-			if (info.required && !isSet(info.longOption)) {
-				if (printHelp) {
-					std::cerr << argv[0] << ": option --" << info.longOption << " is required" << std::endl;
-					helpMessage(argv[0], std::cerr);
-				}
-				return Error;
-			}
-		}
+    return Success;
+  }
 
-		// Parse additional options and check if all required options are set
-		int i;
-		for (i = 0; i < argc-optind; i++) {
-			if (i >= static_cast<int>(m_additionalOptionInfo.size())) {
-				if (printHelp) {
-					std::cerr << argv[0] << ": ignoring unknown parameter \"" << argv[i+optind] << "\"" << std::endl;
-				}
-			} else {
-				m_additionalArguments[m_additionalOptionInfo[i].name] = argv[i+optind];
-			}
-		}
-		if (static_cast<size_t>(i) < m_additionalOptionInfo.size()) {
-			if (m_additionalOptionInfo[i].required) {
-				if (printHelp) {
-					std::cerr << argv[0] << ": option <" << m_additionalOptionInfo[i].name << "> is required" << std::endl;
-					helpMessage(argv[0], std::cerr);
-				}
-				return Error;
-			}
-		}
+  bool isSet(const std::string &option) const {
+    return m_arguments.find(option) != m_arguments.end();
+  }
 
-		return Success;
-	}
+  bool isSetAdditional(const std::string &option) const {
+    return m_additionalArguments.find(option) != m_additionalArguments.end();
+  }
 
-	bool isSet(const std::string &option) const
-	{
-		return m_arguments.find(option) != m_arguments.end();
-	}
+  template <typename T> T getArgument(const std::string &option) {
+    return StringUtils::parse<T>(m_arguments.at(option));
+  }
 
-	bool isSetAdditional(const std::string &option) const
-	{
-		return m_additionalArguments.find(option) != m_additionalArguments.end();
-	}
+  template <typename T>
+  T getArgument(const std::string &option, T defaultArgument) {
+    if (!isSet(option))
+      return defaultArgument;
 
-	template<typename T>
-	T getArgument(const std::string &option)
-	{
-		return StringUtils::parse<T>(m_arguments.at(option));
-	}
+    return getArgument<T>(option);
+  }
 
-	template<typename T>
-	T getArgument(const std::string &option, T defaultArgument)
-	{
-		if (!isSet(option))
-			return defaultArgument;
+  template <typename T> T getAdditionalArgument(const std::string &option) {
+    return StringUtils::parse<T>(m_additionalArguments.at(option));
+  }
 
-		return getArgument<T>(option);
-	}
+  template <typename T>
+  T getAdditionalArgument(const std::string &option, T defaultArgument) {
+    if (!isSetAdditional(option))
+      return defaultArgument;
 
-	template<typename T>
-	T getAdditionalArgument(const std::string &option)
-	{
-		return StringUtils::parse<T>(m_additionalArguments.at(option));
-	}
+    return getAdditionalArgument<T>(option);
+  }
 
-	template<typename T>
-	T getAdditionalArgument(const std::string &option, T defaultArgument)
-	{
-		if (!isSetAdditional(option))
-			return defaultArgument;
+  void helpMessage(const char *prog, std::ostream &out = std::cout) {
+    // First line with all short options
+    out << "Usage: " << prog;
+    for (size_t i = 0; i < m_options.size() - 1; i++) {
+      out << ' ';
 
-		return getAdditionalArgument<T>(option);
-	}
+      if (!m_optionInfo[i].required)
+        out << '[';
 
-	void helpMessage(const char* prog, std::ostream &out = std::cout)
-	{
-		// First line with all short options
-		out << "Usage: " << prog;
-		for (size_t i = 0; i < m_options.size()-1; i++) {
-			out << ' ';
+      if (m_options[i].val != 0)
+        out << '-' << static_cast<char>(m_options[i].val);
+      else
+        out << "--" << m_options[i].name;
 
-			if (!m_optionInfo[i].required)
-				out << '[';
+      argumentInfo(i, out);
 
-			if (m_options[i].val != 0)
-				out << '-' << static_cast<char>(m_options[i].val);
-			else
-				out << "--" << m_options[i].name;
+      if (!m_optionInfo[i].required)
+        out << ']';
+    }
+    for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
+      out << ' ';
 
-			argumentInfo(i, out);
+      if (!m_additionalOptionInfo[i].required)
+        out << '[';
 
-			if (!m_optionInfo[i].required)
-				out << ']';
-		}
-		for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
-			out << ' ';
+      out << '<' << m_additionalOptionInfo[i].name << '>';
 
-			if (!m_additionalOptionInfo[i].required)
-				out << '[';
+      if (!m_additionalOptionInfo[i].required)
+        out << ']';
+    }
+    out << std::endl;
 
-			out << '<' << m_additionalOptionInfo[i].name << '>';
+    // General program description
+    if (!m_description.empty())
+      out << std::endl << m_description << std::endl;
 
-			if (!m_additionalOptionInfo[i].required)
-				out << ']';
+    // Arguments
+    if (!m_additionalOptionInfo.empty()) {
+      out << std::endl << "arguments:" << std::endl;
+      for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
+        out << "  <" << m_additionalOptionInfo[i].name << '>';
 
-		}
-		out << std::endl;
+        // Number of characters used for the option
+        size_t length = 4 + m_additionalOptionInfo[i].name.size();
 
-		// General program description
-		if (!m_description.empty())
-			out << std::endl << m_description << std::endl;
+        if (length >= 30) {
+          out << std::endl;
+          out << std::setw(30) << ' ';
+        } else
+          out << std::setw(30 - length) << ' ';
 
-		// Arguments
-		if (!m_additionalOptionInfo.empty()) {
-			out << std::endl << "arguments:" << std::endl;
-			for (size_t i = 0; i < m_additionalOptionInfo.size(); i++) {
-				out << "  <" << m_additionalOptionInfo[i].name << '>';
+        out << m_additionalOptionInfo[i].description << std::endl;
+      }
+    }
 
-				// Number of characters used for the option
-				size_t length = 4 + m_additionalOptionInfo[i].name.size();
+    // Optional arguments
+    if (m_options.size() > 1) {
+      out << std::endl << "optional arguments:" << std::endl;
+      for (size_t i = 0; i < m_options.size() - 1; i++) {
+        out << "  ";
 
-				if (length >= 30) {
-					out << std::endl;
-					out << std::setw(30) << ' ';
-				} else
-					out << std::setw(30-length) << ' ';
+        // Number of characters used for the option
+        size_t length = 2;
 
-				out << m_additionalOptionInfo[i].description << std::endl;
-			}
-		}
+        if (m_options[i].val != 0) {
+          out << '-' << static_cast<char>(m_options[i].val);
+          out << ", ";
+          length += 4;
+        }
 
-		// Optional arguments
-		if (m_options.size() > 1) {
-			out << std::endl << "optional arguments:" << std::endl;
-			for (size_t i = 0; i < m_options.size()-1; i++) {
-				out << "  ";
+        out << "--" << m_options[i].name;
+        length += m_optionInfo[i].longOption.size() + 2;
+        length += argumentInfo(i, out);
 
-				// Number of characters used for the option
-				size_t length = 2;
+        if (length >= 30) {
+          out << std::endl;
+          out << std::setw(30) << ' ';
+        } else
+          out << std::setw(30 - length) << ' ';
 
-				if (m_options[i].val != 0) {
-					out << '-' << static_cast<char>(m_options[i].val);
-					out << ", ";
-					length += 4;
-				}
+        out << m_optionInfo[i].description << std::endl;
+      }
+    }
 
-				out << "--" << m_options[i].name;
-				length += m_optionInfo[i].longOption.size() + 2;
-				length += argumentInfo(i, out);
-
-				if (length >= 30) {
-					out << std::endl;
-					out << std::setw(30) << ' ';
-				} else
-					out << std::setw(30-length) << ' ';
-
-				out << m_optionInfo[i].description << std::endl;
-			}
-		}
-
-		out << m_customHelpMessage;
-	}
+    out << m_customHelpMessage;
+  }
 
 private:
-	void addOptionInternal(const std::string &longOption,
-			char shortOption,
-			const std::string &description,
-			Argument argument,
-			bool required,
-			const std::string &value = "",
-			const std::vector<std::string> enumValues = std::vector<std::string>())
-	{
+  void addOptionInternal(
+      const std::string &longOption, char shortOption,
+      const std::string &description, Argument argument, bool required,
+      const std::string &value = "",
+      const std::vector<std::string> enumValues = std::vector<std::string>()) {
 
-		if (shortOption)
-			m_short2option[shortOption] = m_options.size();
+    if (shortOption)
+      m_short2option[shortOption] = m_options.size();
 
-		std::string v;
-		if (!value.empty())
-			v = value;
-		else if (argument != No) {
-			v = longOption;
-			std::for_each(v.begin(), v.end(), valueConvert());
-		}
+    std::string v;
+    if (!value.empty())
+      v = value;
+    else if (argument != No) {
+      v = longOption;
+      std::for_each(v.begin(), v.end(), valueConvert());
+    }
 
-		struct optionInfo i = {enumValues, longOption, v, description, required};
-		m_optionInfo.push_back(i);
+    struct optionInfo i = {enumValues, longOption, v, description, required};
+    m_optionInfo.push_back(i);
 
-		struct option o = {m_optionInfo.back().longOption.c_str(), argument, 0, shortOption};
-		m_options.push_back(o);
-	}
+    struct option o = {m_optionInfo.back().longOption.c_str(), argument, 0,
+                       shortOption};
+    m_options.push_back(o);
+  }
 
-	/**
-	 * Writes the argument information to out
-	 *
-	 * @param i The index of the option for which the argument should be generated
-	 * @return The number if characters written
-	 */
-	size_t argumentInfo(size_t i, std::ostream &out)
-	{
-		switch (m_options[i].has_arg) {
-		case required_argument:
-			out << ' ' << m_optionInfo[i].value;
-			return m_optionInfo[i].value.size() + 1;
-		case optional_argument:
-			out << " [" << m_optionInfo[i].value << ']';
-			return m_optionInfo[i].value.size() + 3;
-		}
+  /**
+   * Writes the argument information to out
+   *
+   * @param i The index of the option for which the argument should be generated
+   * @return The number if characters written
+   */
+  size_t argumentInfo(size_t i, std::ostream &out) {
+    switch (m_options[i].has_arg) {
+    case required_argument:
+      out << ' ' << m_optionInfo[i].value;
+      return m_optionInfo[i].value.size() + 1;
+    case optional_argument:
+      out << " [" << m_optionInfo[i].value << ']';
+      return m_optionInfo[i].value.size() + 3;
+    }
 
-		return 0;
-	}
+    return 0;
+  }
 
 private:
-	template<typename T, size_t N>
-	static T* end(T (&a)[N])
-	{
-		return a + N;
-	}
+  template <typename T, size_t N> static T *end(T (&a)[N]) { return a + N; }
 };
 
-template<> inline
-bool utils::Args::getArgument(const std::string &option, bool defaultArgument)
-{
-	if (!isSet(option)) {
-		return defaultArgument;
-	}
+template <>
+inline bool utils::Args::getArgument(const std::string &option,
+                                     bool defaultArgument) {
+  if (!isSet(option)) {
+    return defaultArgument;
+  }
 
-	return !defaultArgument;
+  return !defaultArgument;
 }
 
-}
+} // namespace utils
 
 #endif // UTILS_ARGS_H

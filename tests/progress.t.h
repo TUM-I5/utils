@@ -40,11 +40,9 @@
 
 using namespace utils;
 
-class TestProgress : public CxxTest::TestSuite
-{
+class TestProgress : public CxxTest::TestSuite {
 public:
-	void testFoo()
-	{
-		// TODO
-	}
+  void testFoo() {
+    // TODO
+  }
 };

@@ -44,48 +44,43 @@
 
 #include "utils/stringutils.h"
 
-namespace utils
-{
+namespace utils {
 
 /**
  * Function(s) to handle environment variables
  */
-class Env
-{
+class Env {
 private:
-	Env() = delete;
-	static inline std::unordered_map<std::string, std::optional<std::string>> cache;
+  Env() = delete;
+  static inline std::unordered_map<std::string, std::optional<std::string>>
+      cache;
+
 public:
-	template<typename T>
-	static std::optional<T> getOptional(const std::string& name)
-	{
-		if (cache.find(name) == cache.end()) {
-			char* value = std::getenv(name.c_str());
-			if (value == nullptr) {
-				cache[name] = std::optional<std::string>();
-			}
-			else {
-				cache[name] = std::make_optional<std::string>(value);
-			}
-		}
+  template <typename T>
+  static std::optional<T> getOptional(const std::string &name) {
+    if (cache.find(name) == cache.end()) {
+      char *value = std::getenv(name.c_str());
+      if (value == nullptr) {
+        cache[name] = std::optional<std::string>();
+      } else {
+        cache[name] = std::make_optional<std::string>(value);
+      }
+    }
 
-		return cache.at(name);
-	}
+    return cache.at(name);
+  }
 
-	template<typename T>
-	static T get(const std::string& name, T&& defaultVal)
-	{
-		const auto value = getOptional<T>(name);
+  template <typename T> static T get(const std::string &name, T &&defaultVal) {
+    const auto value = getOptional<T>(name);
 
-		if (value.has_value()) {
-			return StringUtils::parse<T>(value.value());
-		}
-		else {
-			return std::forward<T>(defaultVal);
-		}
-	}
+    if (value.has_value()) {
+      return StringUtils::parse<T>(value.value());
+    } else {
+      return std::forward<T>(defaultVal);
+    }
+  }
 };
 
-}
+} // namespace utils
 
 #endif // UTILS_ENV_H

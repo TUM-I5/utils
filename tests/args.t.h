@@ -40,28 +40,26 @@
 
 using namespace utils;
 
-class TestArgs : public CxxTest::TestSuite
-{
+class TestArgs : public CxxTest::TestSuite {
 public:
-	void testParseAdditional()
-	{
-		const char* argv[] = {"prog", "1", "2", "3"};
+  void testParseAdditional() {
+    const char *argv[] = {"prog", "1", "2", "3"};
 
-		Args args1;
-		args1.addAdditionalOption("test1", "", true);
-		args1.addAdditionalOption("test2", "", true);
-		args1.addAdditionalOption("test3", "", true);
+    Args args1;
+    args1.addAdditionalOption("test1", "", true);
+    args1.addAdditionalOption("test2", "", true);
+    args1.addAdditionalOption("test3", "", true);
 
-		args1.parse(4, const_cast<char**>(argv), false);
-		TS_ASSERT_EQUALS(args1.getAdditionalArgument<int>("test2"), 2);
+    args1.parse(4, const_cast<char **>(argv), false);
+    TS_ASSERT_EQUALS(args1.getAdditionalArgument<int>("test2"), 2);
 
-		Args args2;
-		args2.addAdditionalOption("test1", "", true);
-		args2.addAdditionalOption("test2", "", true);
+    Args args2;
+    args2.addAdditionalOption("test1", "", true);
+    args2.addAdditionalOption("test2", "", true);
 
-		args2.parse(4, const_cast<char**>(argv), false);
-		TS_ASSERT_EQUALS(args2.getAdditionalArgument<int>("test2"), 2);
+    args2.parse(4, const_cast<char **>(argv), false);
+    TS_ASSERT_EQUALS(args2.getAdditionalArgument<int>("test2"), 2);
 
-		// TODO add more tests to cover all possibilities
-	}
+    // TODO add more tests to cover all possibilities
+  }
 };

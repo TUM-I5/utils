@@ -40,18 +40,13 @@
 
 using namespace utils;
 
-class TestMathUtils : public CxxTest::TestSuite
-{
+class TestMathUtils : public CxxTest::TestSuite {
 public:
-	void testRoundUp()
-	{
-		TS_ASSERT_EQUALS(MathUtils::roundUp(6, 4), 8);
-		TS_ASSERT_EQUALS(MathUtils::roundUp(3, 3), 3);
-		TS_ASSERT_EQUALS(MathUtils::roundUp(12, 10), 20);
-	}
+  void testRoundUp() {
+    TS_ASSERT_EQUALS(MathUtils::roundUp(6, 4), 8);
+    TS_ASSERT_EQUALS(MathUtils::roundUp(3, 3), 3);
+    TS_ASSERT_EQUALS(MathUtils::roundUp(12, 10), 20);
+  }
 
-	void testGcd()
-	{
-		TS_ASSERT_EQUALS(MathUtils::gcd(6, 9), 3);
-	}
+  void testGcd() { TS_ASSERT_EQUALS(MathUtils::gcd(6, 9), 3); }
 };

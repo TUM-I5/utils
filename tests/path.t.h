@@ -40,42 +40,33 @@
 
 using namespace utils;
 
-class TestPath : public CxxTest::TestSuite
-{
+class TestPath : public CxxTest::TestSuite {
 public:
-	void testToString()
-	{
-		TS_ASSERT_EQUALS(std::string(Path("foo/")), "foo");
-	}
+  void testToString() { TS_ASSERT_EQUALS(std::string(Path("foo/")), "foo"); }
 
-	void testBasename()
-	{
-		TS_ASSERT_EQUALS(Path("foo/bar").basename(), "bar");
-		TS_ASSERT_EQUALS(Path("foo").basename(), "foo")
-	}
+  void testBasename() {
+    TS_ASSERT_EQUALS(Path("foo/bar").basename(), "bar");
+    TS_ASSERT_EQUALS(Path("foo").basename(), "foo")
+  }
 
-	void testDirname()
-	{
-		TS_ASSERT_EQUALS(Path("foo/bar").dirname(), "foo");
-		TS_ASSERT_EQUALS(Path("foo/foo/bar").dirname(), "foo/foo");
-		TS_ASSERT_EQUALS(Path("foo").dirname(), "");
-	}
+  void testDirname() {
+    TS_ASSERT_EQUALS(Path("foo/bar").dirname(), "foo");
+    TS_ASSERT_EQUALS(Path("foo/foo/bar").dirname(), "foo/foo");
+    TS_ASSERT_EQUALS(Path("foo").dirname(), "");
+  }
 
-	void testDir()
-	{
-		TS_ASSERT_EQUALS(std::string(Path("foo/bar").dir()), "foo");
-	}
+  void testDir() {
+    TS_ASSERT_EQUALS(std::string(Path("foo/bar").dir()), "foo");
+  }
 
-	void testExists()
-	{
-		TS_ASSERT(Path("/dev/null").exists());
-		TS_ASSERT(!Path("/dev/asdfasdf").exists());
-	}
+  void testExists() {
+    TS_ASSERT(Path("/dev/null").exists());
+    TS_ASSERT(!Path("/dev/asdfasdf").exists());
+  }
 
-	void testOperatorPlus()
-	{
-		TS_ASSERT_EQUALS(std::string(Path("foo")+Path("bar")), "foo/bar");
-		TS_ASSERT_EQUALS(std::string(Path("foo/")+Path("bar")), "foo/bar");
-		TS_ASSERT_EQUALS(std::string(Path("foo")+Path("")), "foo");
-	}
+  void testOperatorPlus() {
+    TS_ASSERT_EQUALS(std::string(Path("foo") + Path("bar")), "foo/bar");
+    TS_ASSERT_EQUALS(std::string(Path("foo/") + Path("bar")), "foo/bar");
+    TS_ASSERT_EQUALS(std::string(Path("foo") + Path("")), "foo");
+  }
 };
