@@ -38,6 +38,9 @@
 #define UTILS_ENV_H
 
 #include <cstdlib>
+#include <optional>
+#include <string>
+#include <unordered_map>
 
 #include "utils/stringutils.h"
 
@@ -49,16 +52,37 @@ namespace utils
  */
 class Env
 {
+private:
+	Env() = delete;
+	static inline std::unordered_map<std::string, std::optional<std::string>> cache;
 public:
 	template<typename T>
-	static T get(const char* name, T defaultVal)
+	static std::optional<T> getOptional(const std::string& name)
 	{
-		char* value = getenv(name);
+		if (cache.find(name) == cache.end()) {
+			char* value = std::getenv(name.c_str());
+			if (value == nullptr) {
+				cache[name] = std::optional<std::string>();
+			}
+			else {
+				cache[name] = std::make_optional<std::string>(value);
+			}
+		}
 
-		if (!value)
-			return defaultVal;
+		return cache.at(name);
+	}
 
-		return StringUtils::parse<T>(value);
+	template<typename T>
+	static T get(const std::string& name, T&& defaultVal)
+	{
+		const auto value = getOptional<T>(name);
+
+		if (value.has_value()) {
+			return StringUtils::parse<T>(value.value());
+		}
+		else {
+			return std::forward<T>(defaultVal);
+		}
 	}
 };
 
