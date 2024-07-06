@@ -40,11 +40,13 @@
 #include "utils/timeutils.h"
 
 #include <algorithm>
+#include <csignal>
 #include <cstdlib>
 #include <ctime>
 #include <execinfo.h>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #ifndef LOG_LEVEL
@@ -56,7 +58,7 @@
 #endif // LOG_LEVEL
 
 #ifndef LOG_PREFIX
-#define LOG_PREFIX "%a %b %d %X"
+#define LOG_PREFIX ""
 #endif // DEBUG_PRFIX
 
 #ifndef LOG_ABORT
@@ -71,6 +73,10 @@
 #define BACKTRACE_SIZE 50
 #endif // BACKTRACE_SIZE
 
+#ifndef LOG_ALL_RANKS
+#define LOG_ALL_RANKS 0
+#endif
+
 /**
  * A collection of useful utility functions
  */
@@ -80,11 +86,14 @@ namespace utils
 /**
  * Handles debugging/logging output
  *
- * Most of the code is taken form QDebug form the Qt Framework
+ * Most of the code is taken from QDebug form the Qt Framework
  */
 class Logger
 {
 public:
+	// cf. https://stackoverflow.com/a/72665316
+	const static inline std::string LogDateFormat = "%Y-%m-%dT%H:%M:%S.%f";
+
 	/** Message type */
 	enum DebugType {
 		/** A debug messages */
@@ -132,21 +141,28 @@ public:
 	Logger(DebugType t, int rank)
 		: stream(new Stream(t, rank))
 	{
-		stream->buffer << utils::TimeUtils::timeAsString(LOG_PREFIX);
+		stream->buffer << utils::TimeUtils::timeAsString(LogDateFormat.c_str());
 
 		switch (t) {
 		case LOG_DEBUG:
-			stream->buffer << ", Debug: ";
+			stream->buffer << "| DEBG | ";
 			break;
 		case LOG_INFO:
-			stream->buffer << ", Info:  ";
+			stream->buffer << "| INFO |";
 			break;
 		case LOG_WARNING:
-			stream->buffer << ", Warn:  ";
+			stream->buffer << "| WARN | ";
 			break;
 		case LOG_ERROR:
-			stream->buffer << ", Error: ";
+			stream->buffer << "| ERROR | ";
 			break;
+		default:
+			stream->buffer << "| UNKNOWN | ";
+			break;
+		}
+
+		if (rank >= 0) {
+			stream->buffer << "RANK " << rank << " | ";
 		}
 	}
 	/**
@@ -156,14 +172,18 @@ public:
 	~Logger()
 	{
 		if (!--stream->ref) {
-			if (stream->rank == 0) {
-				if (stream->type == LOG_INFO)
+			if (stream->rank == 0 || stream->rank == -1 || LOG_ALL_RANKS) {
+				if (stream->type == LOG_INFO || stream->type == LOG_DEBUG) {
 					std::cout << stream->buffer.str() << std::endl;
-				else
+				}
+				else {
 					std::cerr << stream->buffer.str() << std::endl;
+				}
 			}
 
 			if (stream->type == LOG_ERROR) {
+				std::raise(SIGTRAP);
+
 				delete stream;
 				stream = 0L;	// Avoid double free if LOG_ABORT does
 								// does not exit the program
@@ -177,8 +197,9 @@ public:
 					// Buffer output to avoid interlacing with other processes
 					std::stringstream outputBuffer;
 					outputBuffer << "Backtrace:" << std::endl;
-					for (int i = 0; i < nptrs; i++)
+					for (int i = 0; i < nptrs; i++) {
 						outputBuffer << strings[i] << std::endl;
+					}
 					free(strings);
 
 					// Write backtrace to stderr
@@ -229,8 +250,9 @@ public:
 	 */
 	Logger &maybeSpace()
 	{
-		if (stream->space)
+		if (stream->space) {
 			stream->buffer << ' ';
+		}
 		return *this;
 	}
 
@@ -370,9 +392,9 @@ inline Logger &operator<<(Logger debug, const std::vector<T> &list)
  * @relates utils::Logger
  */
 inline
-utils::Logger logError()
+utils::Logger logError( int rank = -1 )
 {
-	return utils::Logger(utils::Logger::LOG_ERROR, 0);
+	return utils::Logger(utils::Logger::LOG_ERROR, rank);
 }
 
 #if LOG_LEVEL >= 1
@@ -382,7 +404,7 @@ utils::Logger logError()
  * @relates utils::Logger
  */
 inline
-utils::Logger logWarning( int rank = 0 )
+utils::Logger logWarning( int rank = -1 )
 {
 	return utils::Logger(utils::Logger::LOG_WARNING, rank);
 }
@@ -393,7 +415,7 @@ utils::Logger logWarning( int rank = 0 )
  * @relates utils::NoLogger
  */
 inline
-utils::NoLogger logWarning( int = 0 ) { return utils::NoLogger(); }
+utils::NoLogger logWarning( int = -1 ) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 1
 
 #if LOG_LEVEL >= 2
@@ -403,7 +425,7 @@ utils::NoLogger logWarning( int = 0 ) { return utils::NoLogger(); }
  * @relates utils::Logger
  */
 inline
-utils::Logger logInfo( int rank = 0 )
+utils::Logger logInfo( int rank = -1 )
 {
 	return utils::Logger(utils::Logger::LOG_INFO, rank);
 }
@@ -414,7 +436,7 @@ utils::Logger logInfo( int rank = 0 )
  * @relates utils::NoLogger
  */
 inline
-utils::NoLogger logInfo( int = 0 ) { return utils::NoLogger(); }
+utils::NoLogger logInfo( int = -1 ) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 2
 
 #if LOG_LEVEL >= 3
@@ -424,7 +446,7 @@ utils::NoLogger logInfo( int = 0 ) { return utils::NoLogger(); }
  * @relates utils::Logger
  */
 inline
-utils::Logger logDebug( int rank = 0 )
+utils::Logger logDebug( int rank = -1 )
 {
 	return utils::Logger(utils::Logger::LOG_DEBUG, rank);
 }
@@ -435,7 +457,7 @@ utils::Logger logDebug( int rank = 0 )
  * @relates utils::NoLogger
  */
 inline
-utils::NoLogger logDebug( int = 0 ) { return utils::NoLogger(); }
+utils::NoLogger logDebug( int = -1 ) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 3
 
 
