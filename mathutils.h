@@ -44,6 +44,7 @@ namespace utils
  */
 class MathUtils
 {
+	MathUtils() = delete;
 public:
 	/**
 	 * Finds the smallest value x >= a such that x % k == 0

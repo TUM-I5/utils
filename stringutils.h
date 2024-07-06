@@ -57,6 +57,7 @@ namespace utils
  */
 class StringUtils
 {
+	StringUtils() = delete;
 public:
 
 	/**
@@ -66,8 +67,9 @@ public:
 	 */
 	static bool replace(std::string& str, const std::string& from, const std::string& to) {
 		size_t start_pos = str.find(from);
-		if(start_pos == std::string::npos)
+		if(start_pos == std::string::npos) {
 			return false;
+		}
 		str.replace(start_pos, from.length(), to);
 		return true;
 	}
@@ -77,8 +79,9 @@ public:
 	 */
 	static bool replaceLast(std::string& str, const std::string& from, const std::string& to) {
 		size_t start_pos = str.rfind(from);
-		if (start_pos == std::string::npos)
+		if (start_pos == std::string::npos) {
 			return false;
+		}
 		str.replace(start_pos, from.length(), to);
 		return true;
 	}
@@ -105,10 +108,10 @@ public:
 	 * operator) into std::string
 	 */
 	template<typename T>
-	static std::string toString(T value)
+	static std::string toString(T&& value)
 	{
 		std::ostringstream ss;
-		ss << value;
+		ss << std::forward<T>(value);
 		return ss.str();
 	}
 
@@ -145,8 +148,9 @@ public:
 		std::vector<T> elems;
 		std::istringstream f(str);
 		std::string s;
-		while (std::getline(f, s, ':'))
+		while (std::getline(f, s, ':')) {
 			elems.push_back(parse<T>(s));
+		}
 		
 		return elems;
 	}
@@ -156,8 +160,9 @@ public:
 	 */
 	static void toUpper(char* s)
 	{
-		for (size_t i = 0; s[i]; i++)
+		for (size_t i = 0; s[i]; i++) {
 			s[i] = toupper(s[i]);
+		}
 	}
 
 	/**
@@ -165,8 +170,9 @@ public:
 	 */
 	static void toUpper(std::string &str)
 	{
-		for (size_t i = 0;  str[i]; i++)
+		for (size_t i = 0;  str[i]; i++) {
 			str[i] = toupper(str[i]);
+		}
 	}
 
 	/**
@@ -174,8 +180,9 @@ public:
 	 */
 	static void toLower(char* s)
 	{
-		for (size_t i = 0; s[i]; i++)
+		for (size_t i = 0; s[i]; i++) {
 			s[i] = tolower(s[i]);
+		}
 	}
 
 	/**
@@ -183,8 +190,9 @@ public:
 	 */
 	static void toLower(std::string &str)
 	{
-		for (size_t i = 0; str[i]; i++)
+		for (size_t i = 0; str[i]; i++) {
 			str[i] = tolower(str[i]);
+		}
 	}
 
 	/**
@@ -226,9 +234,10 @@ public:
 	template<typename T>
 	static std::string join(const std::vector<T> &v, const std::string &token) {
 		std::ostringstream result;
-		for (typename std::vector<T>::const_iterator i = v.begin(); i != v.end(); i++){
-			if (i != v.begin())
+		for (auto i = v.begin(); i != v.end(); i++){
+			if (i != v.begin()) {
 				result << token;
+			}
 			result << *i;
 		}
 
@@ -246,8 +255,9 @@ public:
 		std::stringstream ss(str);
 
 		std::string item;
-		while (getline(ss, item, delim))
+		while (std::getline(ss, item, delim)) {
 			elems.push_back(item);
+		}
 
 		return elems;
 	}
@@ -270,10 +280,11 @@ bool StringUtils::parse(const std::string &str, bool advanced)
 {
 	std::string s = str;
 	toLower(s);
+	trim(s);
 
-	if (s == "on"
-			|| s == "yes")
+	if (s == "on" || s == "yes" || s == "true") {
 		return true;
+	}
 
 	return parse<bool>(str);
 }

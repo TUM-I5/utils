@@ -51,6 +51,7 @@ namespace utils
  */
 class TimeUtils
 {
+	TimeUtils() = delete;
 public:
 	/**
 	 * Formats a string using strftime
