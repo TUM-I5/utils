@@ -39,6 +39,9 @@
 
 #include "common.h"
 
+#include <cstddef>
+#include <type_traits>
+
 namespace utils
 {
 
@@ -47,15 +50,19 @@ namespace utils
  */
 class ArrayUtils
 {
+	ArrayUtils() = delete;
 public:
+
+	// available since C++17
+
 	/**
 	 * Size of a static array
 	 *
 	 * @param a The array
 	 * @return The size (number of elements) of the array
 	 */
-	template<typename T, size_t N>
-	static size_t size(const T (&a)[N])
+	template<typename T, std::size_t N>
+	[[deprecated]] static std::size_t size(const T (&a)[N])
 	{
 		return N;
 	}
@@ -67,7 +74,7 @@ public:
 	 * @return 0
 	 */
 	template<typename T>
-	static size_t size(const T*)
+	[[deprecated]] static std::size_t size(const T*)
 	{
 		return 0;
 	}
@@ -81,7 +88,7 @@ public:
 	 *  static arrays and can be used with automatic template argument deduction.
 	 */
 	template<typename T>
-	static typename std::enable_if<has_size<T>::value, size_t>::type
+	[[deprecated]] static typename std::enable_if_t<has_size<T>::value, size_t>
 	size(const T &a)
 	{
 		return a.size();

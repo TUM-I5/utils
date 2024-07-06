@@ -37,11 +37,14 @@
 #ifndef UTILS_COMMON_H
 #define UTILS_COMMON_H
 
+#include <utility>
+
 namespace utils
 {
 
+// available since C++11(?)
 template<typename T>
-void swap(T& a, T& b)
+[[deprecated]] void swap(T& a, T& b)
 {
 	T tmp = a;
 	a = b;
