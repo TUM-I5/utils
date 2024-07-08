@@ -105,9 +105,10 @@ public:
    */
   Logger(DebugType t, int rank) : stream(new Stream(t, rank)) {
     auto timepoint = std::chrono::system_clock::now();
-    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(
-                     timepoint.time_since_epoch())
-                     .count();
+    auto milliTotal = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          timepoint.time_since_epoch())
+                          .count();
+    auto milli = milliTotal % 1000;
     time_t time = std::chrono::system_clock::to_time_t(timepoint);
 
     stream->buffer << utils::TimeUtils::timeAsString("%F %T", time) << "."
@@ -115,13 +116,13 @@ public:
 
     switch (t) {
     case LOG_DEBUG:
-      stream->buffer << " debug ";
+      stream->buffer << " debg ";
       break;
     case LOG_INFO:
       stream->buffer << " info ";
       break;
     case LOG_WARNING:
-      stream->buffer << " warning ";
+      stream->buffer << " warn ";
       break;
     case LOG_ERROR:
       stream->buffer << " error ";
@@ -132,9 +133,9 @@ public:
     }
 
     if (rank >= 0) {
-      stream->buffer << rank << " ";
+      stream->buffer << rank << " :: ";
     } else {
-      stream->buffer << "- ";
+      stream->buffer << "- :: ";
     }
   }
   /**
