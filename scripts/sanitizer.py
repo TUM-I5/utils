@@ -130,7 +130,7 @@ def licenseHeader(authorspans, commentstyle = '//'):
         # TODO: unite year spans
         timespan = authorspans[author]
         crlines += [f'{commentstyle} SPDX-FileCopyrightText: {timespan} {author}']
-    return crlines + [f'{commentstyle} ', f'{commentstyle} SPDX-License-Identifier: {Settings.LICENSE}', '']
+    return crlines + [f'{commentstyle} ', f'{commentstyle} SPDX-License-Identifier: {Settings.LICENSE}']
 
 def makeLicense(path, copyrights, commentstyle = '//'):
     authorspans = {}

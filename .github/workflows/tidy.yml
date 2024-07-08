@@ -9,16 +9,20 @@ jobs:
     steps:
       - name: apt-get
         run: |
-          sudo apt-get update
-          sudo apt-get install hdf5-tools libeigen3-dev libhdf5-openmpi-103 libhdf5-openmpi-dev libmetis-dev libomp-dev libopenmpi-dev libparmetis-dev libyaml-cpp-dev openmpi-bin openmpi-common python3 python3-pip
+          sudo apt-get update -y
+          sudo apt-get install -y libomp-dev libopenmpi-dev openmpi-bin openmpi-common ninja-build
 
           # keep, for once clang-19 or higher is needed
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           sudo add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main"
           sudo add-apt-repository "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main"
-          sudo apt-get update
+          sudo apt-get update -y
 
           sudo apt-get -y install clang-18 clang-tidy-18 libomp-18-dev
+
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:deadsnakes/ppa
+          sudo apt-get install -y cxxtest
 
           sudo pip3 install numpy
           sudo mkdir -p /opt/dependencies
@@ -35,5 +39,6 @@ jobs:
           git submodule update --init
           mkdir -p build && cd build
           cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DTESTING=ON
+          ninja
           sed -i 's/-fprofile-abs-path //g' compile_commands.json
           run-clang-tidy ../ ./ -clang-tidy-binary=$(which clang-tidy-18) -quiet -j $(nproc)
