@@ -45,10 +45,10 @@ public:
   }
 
   template <typename T>
-  static std::enable_if_t<!std::is_array_v<T>, T> get(const std::string &name,
-                                                      T &&defaultVal) {
+  static std::enable_if_t<!std::is_array_v<T>, std::decay_t<T>>
+  get(const std::string &name, T &&defaultVal) {
     // mirror requirements for an optional
-    const auto value = getOptional<T>(name);
+    const auto value = getOptional<std::decay_t<T>>(name);
 
     if (value.has_value()) {
       return value.value();
