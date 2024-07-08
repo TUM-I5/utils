@@ -71,6 +71,36 @@ public:
            str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
   }
 
+  static std::string padLeft(const std::string &str, std::size_t size,
+                             char padchar) {
+    if (str.size() >= size) {
+      return str;
+    } else {
+      std::stringstream stream;
+      std::size_t padlen = size - str.size();
+      for (std::size_t i = 0; i < padlen; ++i) {
+        stream << padchar;
+      }
+      stream << str;
+      return stream.str();
+    }
+  }
+
+  static std::string padRight(const std::string &str, std::size_t size,
+                              char padchar) {
+    if (str.size() >= size) {
+      return str;
+    } else {
+      std::stringstream stream;
+      stream << str;
+      std::size_t padlen = size - str.size();
+      for (std::size_t i = 0; i < padlen; ++i) {
+        stream << padchar;
+      }
+      return stream.str();
+    }
+  }
+
   /**
    * Converts arbitrary datatypes (all datatypes which support the << stream
    * operator) into std::string

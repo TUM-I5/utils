@@ -5,9 +5,11 @@
 #ifndef UTILS_LOGGER_H_
 #define UTILS_LOGGER_H_
 
+#include "utils/stringutils.h"
 #include "utils/timeutils.h"
 
 #include <algorithm>
+#include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <ctime>
@@ -57,9 +59,6 @@ namespace utils {
  */
 class Logger {
 public:
-  // cf. https://stackoverflow.com/a/72665316
-  const static inline std::string LogDateFormat = "%Y-%m-%dT%H:%M:%S.%f";
-
   /** Message type */
   enum DebugType {
     /** A debug messages */
@@ -105,28 +104,37 @@ public:
    *  0 will be printed
    */
   Logger(DebugType t, int rank) : stream(new Stream(t, rank)) {
-    stream->buffer << utils::TimeUtils::timeAsString(LogDateFormat.c_str());
+    auto timepoint = std::chrono::system_clock::now();
+    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     timepoint.time_since_epoch())
+                     .count();
+    time_t time = std::chrono::system_clock::to_time_t(timepoint);
+
+    stream->buffer << utils::TimeUtils::timeAsString("%F %T", time) << "."
+                   << StringUtils::padLeft(std::to_string(milli), 3, ' ');
 
     switch (t) {
     case LOG_DEBUG:
-      stream->buffer << "| DEBG | ";
+      stream->buffer << " debug ";
       break;
     case LOG_INFO:
-      stream->buffer << "| INFO |";
+      stream->buffer << " info ";
       break;
     case LOG_WARNING:
-      stream->buffer << "| WARN | ";
+      stream->buffer << " warning ";
       break;
     case LOG_ERROR:
-      stream->buffer << "| ERROR | ";
+      stream->buffer << " error ";
       break;
     default:
-      stream->buffer << "| UNKNOWN | ";
+      stream->buffer << " unknown ";
       break;
     }
 
     if (rank >= 0) {
-      stream->buffer << "RANK " << rank << " | ";
+      stream->buffer << rank << " ";
+    } else {
+      stream->buffer << "- ";
     }
   }
   /**
