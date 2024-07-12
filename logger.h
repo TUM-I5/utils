@@ -1,50 +1,22 @@
-/**
- * @file
- *  This file is part of UTILS
- *
- * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
- *
- * @copyright Copyright (c) 2013-2015, Technische Universitaet Muenchen.
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- *  1. Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *
- *  2. Redistributions in binary form must reproduce the above copyright notice
- *     this list of conditions and the following disclaimer in the documentation
- *     and/or other materials provided with the distribution.
- *
- *  3. Neither the name of the copyright holder nor the names of its
- *     contributors may be used to endorse or promote products derived from this
- *     software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
+// SPDX-FileCopyrightText: 2013-2024 Technical University of Munich
+//
+// SPDX-License-Identifier: BSD-3-Clause
 
-#ifndef UTILS_LOGGER_H
-#define UTILS_LOGGER_H
+#ifndef UTILS_LOGGER_H_
+#define UTILS_LOGGER_H_
 
+#include "utils/stringutils.h"
 #include "utils/timeutils.h"
 
 #include <algorithm>
+#include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <ctime>
 #include <execinfo.h>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #ifndef LOG_LEVEL
@@ -56,7 +28,7 @@
 #endif // LOG_LEVEL
 
 #ifndef LOG_PREFIX
-#define LOG_PREFIX "%a %b %d %X"
+#define LOG_PREFIX ""
 #endif // DEBUG_PRFIX
 
 #ifndef LOG_ABORT
@@ -71,214 +43,224 @@
 #define BACKTRACE_SIZE 50
 #endif // BACKTRACE_SIZE
 
+#ifndef LOG_ALL_RANKS
+#define LOG_ALL_RANKS 0
+#endif
+
 /**
  * A collection of useful utility functions
  */
-namespace utils
-{
+namespace utils {
 
 /**
  * Handles debugging/logging output
  *
- * Most of the code is taken form QDebug form the Qt Framework
+ * Most of the code is taken from QDebug form the Qt Framework
  */
-class Logger
-{
+class Logger {
 public:
-	/** Message type */
-	enum DebugType {
-		/** A debug messages */
-		LOG_DEBUG,
-		/** A info message (printed to stdout) */
-		LOG_INFO,
-		/** A warning message */
-		LOG_WARNING,
-		/** A fatal error */
-		LOG_ERROR
-	};
+  /** Message type */
+  enum DebugType {
+    /** A debug messages */
+    LOG_DEBUG,
+    /** A info message (printed to stdout) */
+    LOG_INFO,
+    /** A warning message */
+    LOG_WARNING,
+    /** A fatal error */
+    LOG_ERROR
+  };
+
 private:
-	/** Contains all information for a debug message */
-	struct Stream {
-		/** The debug type */
-		DebugType type;
-		/** MPI Rank, set to 0 to print message */
-		int rank;
-		/** References */
-		int ref;
-		/** Buffer for the output */
-		std::stringstream buffer;
-		/** Print additional space */
-		bool space;
+  /** Contains all information for a debug message */
+  struct Stream {
+    /** The debug type */
+    DebugType type;
+    /** MPI Rank, set to 0 to print message */
+    int rank;
+    /** References */
+    int ref;
+    /** Buffer for the output */
+    std::stringstream buffer;
+    /** Print additional space */
+    bool space;
 
-		/**
-		 * Set defaults for a debug message
-		 */
-		Stream(DebugType t, int r)
-			: type(t), rank(r), ref(1),
-			buffer(std::stringstream::out),
-			space(true) { }
-	} *stream;
-	/**
-	 * Pointer to all information about the message
-	 */
+    /**
+     * Set defaults for a debug message
+     */
+    Stream(DebugType t, int r)
+        : type(t), rank(r), ref(1), buffer(std::stringstream::out),
+          space(true) {}
+  } *stream;
+  /**
+   * Pointer to all information about the message
+   */
 public:
-	/**
-	 * Start a new Debug message
-	 *
-	 * @param t Type of the message
-	 * @param rank Rank of the current process, only messages form rank
-	 *  0 will be printed
-	 */
-	Logger(DebugType t, int rank)
-		: stream(new Stream(t, rank))
-	{
-		stream->buffer << utils::TimeUtils::timeAsString(LOG_PREFIX);
+  /**
+   * Start a new Debug message
+   *
+   * @param t Type of the message
+   * @param rank Rank of the current process, only messages form rank
+   *  0 will be printed
+   */
+  Logger(DebugType t, int rank) : stream(new Stream(t, rank)) {
+    auto timepoint = std::chrono::system_clock::now();
+    auto milliTotal = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          timepoint.time_since_epoch())
+                          .count();
+    auto milli = milliTotal % 1000;
+    time_t time = std::chrono::system_clock::to_time_t(timepoint);
 
-		switch (t) {
-		case LOG_DEBUG:
-			stream->buffer << ", Debug: ";
-			break;
-		case LOG_INFO:
-			stream->buffer << ", Info:  ";
-			break;
-		case LOG_WARNING:
-			stream->buffer << ", Warn:  ";
-			break;
-		case LOG_ERROR:
-			stream->buffer << ", Error: ";
-			break;
-		}
-	}
-	/**
-	 * Copy constructor
-	 */
-	Logger(const Logger& o) : stream(o.stream) { stream->ref++; };
-	~Logger()
-	{
-		if (!--stream->ref) {
-			if (stream->rank == 0) {
-				if (stream->type == LOG_INFO)
-					std::cout << stream->buffer.str() << std::endl;
-				else
-					std::cerr << stream->buffer.str() << std::endl;
-			}
+    stream->buffer << utils::TimeUtils::timeAsString("%F %T", time) << "."
+                   << StringUtils::padLeft(std::to_string(milli), 3, '0');
 
-			if (stream->type == LOG_ERROR) {
-				delete stream;
-				stream = 0L;	// Avoid double free if LOG_ABORT does
-								// does not exit the program
+    switch (t) {
+    case LOG_DEBUG:
+      stream->buffer << " debg ";
+      break;
+    case LOG_INFO:
+      stream->buffer << " info ";
+      break;
+    case LOG_WARNING:
+      stream->buffer << " warn ";
+      break;
+    case LOG_ERROR:
+      stream->buffer << " error ";
+      break;
+    default:
+      stream->buffer << " unknown ";
+      break;
+    }
 
-				// Backtrace
-				if (BACKTRACE_SIZE > 0) {
-					void *buffer[BACKTRACE_SIZE];
-					int nptrs = backtrace(buffer, BACKTRACE_SIZE);
-					char** strings = backtrace_symbols(buffer, nptrs);
+    if (rank >= 0) {
+      stream->buffer << rank << " :: ";
+    } else {
+      stream->buffer << "- :: ";
+    }
+  }
+  /**
+   * Copy constructor
+   */
+  Logger(const Logger &o) : stream(o.stream) { stream->ref++; };
+  ~Logger() {
+    if (!--stream->ref) {
+      if (stream->rank == 0 || stream->rank == -1 || LOG_ALL_RANKS) {
+        if (stream->type == LOG_INFO || stream->type == LOG_DEBUG) {
+          std::cout << stream->buffer.str() << std::endl;
+        } else {
+          std::cerr << stream->buffer.str() << std::endl;
+        }
+      }
 
-					// Buffer output to avoid interlacing with other processes
-					std::stringstream outputBuffer;
-					outputBuffer << "Backtrace:" << std::endl;
-					for (int i = 0; i < nptrs; i++)
-						outputBuffer << strings[i] << std::endl;
-					free(strings);
+      if (stream->type == LOG_ERROR) {
+        std::raise(SIGTRAP);
 
-					// Write backtrace to stderr
-					std::cerr << outputBuffer.str() << std::flush;
-				}
+        delete stream;
+        stream = 0L; // Avoid double free if LOG_ABORT does
+                     // does not exit the program
 
-				LOG_ABORT;
-			}
+        // Backtrace
+        if (BACKTRACE_SIZE > 0) {
+          void *buffer[BACKTRACE_SIZE];
+          int nptrs = backtrace(buffer, BACKTRACE_SIZE);
+          char **strings = backtrace_symbols(buffer, nptrs);
 
-			delete stream;
-		}
-	}
+          // Buffer output to avoid interlacing with other processes
+          std::stringstream outputBuffer;
+          outputBuffer << "Backtrace:" << std::endl;
+          for (int i = 0; i < nptrs; i++) {
+            outputBuffer << strings[i] << std::endl;
+          }
+          free(strings);
 
-	/**
-	 * Copy operator
-	 */
-	Logger &operator=(const Logger& other)
-	{
-		if (this != &other) {
-			Logger copy(other);
-			std::swap(stream, copy.stream);
-		}
-		return *this;
-	}
+          // Write backtrace to stderr
+          std::cerr << outputBuffer.str() << std::flush;
+        }
 
+        LOG_ABORT;
+      }
 
-	/********* Space handling *********/
+      delete stream;
+    }
+  }
 
-	/**
-	 * Add a space to output message and activate spaces
-	 */
-	Logger &space()
-	{
-		stream->space = true;
-		stream->buffer << ' ';
-		return *this;
-	}
-	/**
-	 * Deactivate spaces
-	 */
-	Logger &nospace()
-	{
-		stream->space = false;
-		return *this;
-	}
-	/**
-	 * Add space of activated
-	 */
-	Logger &maybeSpace()
-	{
-		if (stream->space)
-			stream->buffer << ' ';
-		return *this;
-	}
+  /**
+   * Copy operator
+   */
+  Logger &operator=(const Logger &other) {
+    if (this != &other) {
+      Logger copy(other);
+      std::swap(stream, copy.stream);
+    }
+    return *this;
+  }
 
-	/**
-	 * Default function to add messages
-	 */
-	template<typename T>
-	Logger &operator<<(T t)
-	{
-		stream->buffer << t;
-		return maybeSpace();
-	}
+  /********* Space handling *********/
 
-	/**
-	 * Add a string variable to the message
-	 */
-	Logger &operator<<(const std::string& t)
-	{
-		stream->buffer << '"' << t << '"';
-		return maybeSpace();
-	}
+  /**
+   * Add a space to output message and activate spaces
+   */
+  Logger &space() {
+    stream->space = true;
+    stream->buffer << ' ';
+    return *this;
+  }
+  /**
+   * Deactivate spaces
+   */
+  Logger &nospace() {
+    stream->space = false;
+    return *this;
+  }
+  /**
+   * Add space of activated
+   */
+  Logger &maybeSpace() {
+    if (stream->space) {
+      stream->buffer << ' ';
+    }
+    return *this;
+  }
 
-	/**
-	 * Add a string variable to the message
-	 */
-	Logger &operator<<(std::string& t)
-	{
-		stream->buffer << '"' << t << '"';
-		return maybeSpace();
-	}
+  /**
+   * Default function to add messages
+   */
+  template <typename T> Logger &operator<<(T t) {
+    stream->buffer << t;
+    return maybeSpace();
+  }
 
-	/**
-	 * Operator to add functions like std::endl
-	 */
-	Logger &operator<<(std::ostream& (*func)(std::ostream&))
-	{
-		stream->buffer << func;
-		return *this; // No space in this case
-	}
+  /**
+   * Add a string variable to the message
+   */
+  Logger &operator<<(const std::string &t) {
+    stream->buffer << '"' << t << '"';
+    return maybeSpace();
+  }
 
-	/**
-	 * Operator for enabling/disabling automatic spacing
-	 */
-	Logger &operator<<(Logger& (*func)(Logger&))
-	{
-		func(*this);
-		return *this;
-	}
+  /**
+   * Add a string variable to the message
+   */
+  Logger &operator<<(std::string &t) {
+    stream->buffer << '"' << t << '"';
+    return maybeSpace();
+  }
+
+  /**
+   * Operator to add functions like std::endl
+   */
+  Logger &operator<<(std::ostream &(*func)(std::ostream &)) {
+    stream->buffer << func;
+    return *this; // No space in this case
+  }
+
+  /**
+   * Operator for enabling/disabling automatic spacing
+   */
+  Logger &operator<<(Logger &(*func)(Logger &)) {
+    func(*this);
+    return *this;
+  }
 };
 
 /**
@@ -289,10 +271,7 @@ public:
  *
  * @relates utils::Logger
  */
-inline Logger& space(Logger &logger)
-{
-	return logger.space();
-}
+inline Logger &space(Logger &logger) { return logger.space(); }
 
 /**
  * Function to deactivate automatic spacing
@@ -300,45 +279,31 @@ inline Logger& space(Logger &logger)
  * @see space()
  * @relates utils::Logger
  */
-inline Logger& nospace(Logger &logger)
-{
-	return logger.nospace();
-}
+inline Logger &nospace(Logger &logger) { return logger.nospace(); }
 
 /**
  * Dummy Logger class, does nothing
  */
-class NoLogger
-{
+class NoLogger {
 public:
-	NoLogger() {};
-	~NoLogger() {};
+  NoLogger() {};
+  ~NoLogger() {};
 
-	/**
-	 * Do nothing with the message
-	 */
-	template<typename T>
-	NoLogger &operator<<(const T&)
-	{
-		return *this;
-	}
+  /**
+   * Do nothing with the message
+   */
+  template <typename T> NoLogger &operator<<(const T &) { return *this; }
 
-	/**
-	 * Operator to add functions like std::endl
-	 */
-	NoLogger &operator<<(std::ostream& (*func)(std::ostream&))
-	{
-		return *this;
-	}
+  /**
+   * Operator to add functions like std::endl
+   */
+  NoLogger &operator<<(std::ostream &(*func)(std::ostream &)) { return *this; }
 
-	/**
-	 * Operator for enabling/disabling automatic spacing
-	 * (the operator itself is ignored)
-	 */
-	NoLogger &operator<<(Logger& (*func)(Logger&))
-	{
-		return *this;
-	}
+  /**
+   * Operator for enabling/disabling automatic spacing
+   * (the operator itself is ignored)
+   */
+  NoLogger &operator<<(Logger &(*func)(Logger &)) { return *this; }
 };
 
 /**
@@ -347,20 +312,19 @@ public:
  * @relates utils::Logger
  */
 template <typename T>
-inline Logger &operator<<(Logger debug, const std::vector<T> &list)
-{
-	debug.nospace() << '(';
-	for (size_t i = 0; i < list.size(); i++) {
-		if (i)
-			debug << ", ";
-		debug << list[i];
-	}
-	debug << ')';
+inline Logger &operator<<(Logger debug, const std::vector<T> &list) {
+  debug.nospace() << '(';
+  for (size_t i = 0; i < list.size(); i++) {
+    if (i)
+      debug << ", ";
+    debug << list[i];
+  }
+  debug << ')';
 
-	return debug.space();
+  return debug.space();
 }
 
-}
+} // namespace utils
 
 // Define global functions
 
@@ -369,10 +333,8 @@ inline Logger &operator<<(Logger debug, const std::vector<T> &list)
  *
  * @relates utils::Logger
  */
-inline
-utils::Logger logError()
-{
-	return utils::Logger(utils::Logger::LOG_ERROR, 0);
+inline utils::Logger logError(int rank = -1) {
+  return utils::Logger(utils::Logger::LOG_ERROR, rank);
 }
 
 #if LOG_LEVEL >= 1
@@ -381,19 +343,16 @@ utils::Logger logError()
  *
  * @relates utils::Logger
  */
-inline
-utils::Logger logWarning( int rank = 0 )
-{
-	return utils::Logger(utils::Logger::LOG_WARNING, rank);
+inline utils::Logger logWarning(int rank = -1) {
+  return utils::Logger(utils::Logger::LOG_WARNING, rank);
 }
-#else // LOG_LEVEL >= 1
+#else  // LOG_LEVEL >= 1
 /**
  * Create a dummy warning message if disabled
  *
  * @relates utils::NoLogger
  */
-inline
-utils::NoLogger logWarning( int = 0 ) { return utils::NoLogger(); }
+inline utils::NoLogger logWarning(int = -1) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 1
 
 #if LOG_LEVEL >= 2
@@ -402,19 +361,16 @@ utils::NoLogger logWarning( int = 0 ) { return utils::NoLogger(); }
  *
  * @relates utils::Logger
  */
-inline
-utils::Logger logInfo( int rank = 0 )
-{
-	return utils::Logger(utils::Logger::LOG_INFO, rank);
+inline utils::Logger logInfo(int rank = -1) {
+  return utils::Logger(utils::Logger::LOG_INFO, rank);
 }
-#else // LOG_LEVEL >= 2
+#else  // LOG_LEVEL >= 2
 /**
  * Create a dummy info message if disabled
  *
  * @relates utils::NoLogger
  */
-inline
-utils::NoLogger logInfo( int = 0 ) { return utils::NoLogger(); }
+inline utils::NoLogger logInfo(int = -1) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 2
 
 #if LOG_LEVEL >= 3
@@ -423,27 +379,23 @@ utils::NoLogger logInfo( int = 0 ) { return utils::NoLogger(); }
  *
  * @relates utils::Logger
  */
-inline
-utils::Logger logDebug( int rank = 0 )
-{
-	return utils::Logger(utils::Logger::LOG_DEBUG, rank);
+inline utils::Logger logDebug(int rank = -1) {
+  return utils::Logger(utils::Logger::LOG_DEBUG, rank);
 }
-#else // LOG_LEVEL >= 3
+#else  // LOG_LEVEL >= 3
 /**
  * Create a dummy debug message if disabled
  *
  * @relates utils::NoLogger
  */
-inline
-utils::NoLogger logDebug( int = 0 ) { return utils::NoLogger(); }
+inline utils::NoLogger logDebug(int = -1) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 3
-
 
 // Use for variables unused when compiling with NDEBUG
 #ifdef NDEBUG
-#define NDBG_UNUSED(x) ((void) x)
+#define NDBG_UNUSED(x) ((void)x)
 #else // NDEBUG
 #define NDBG_UNUSED(x)
 #endif // NDEBUG
 
-#endif // UTILS_LOGGER_H
+#endif // UTILS_LOGGER_H_

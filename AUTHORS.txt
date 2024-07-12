@@ -1,0 +1,27 @@
+SPDX-FileCopyrightText: 2024 Technical University of Munich
+
+SPDX-License-Identifier: BSD-3-Clause
+
+-----------
+AUTHOR LIST
+-----------
+
+Programmed by:
+ * Rettenberger, Sebastian - TUM
+
+Follow-up maintenance and refactoring by the SeisSol team:
+ * Schneller, David - TUM
+ * Krenz, Lukas - TUM
+ * Wolf, Sebastian - TUM
+
+Repository webpage: https://github.com/TUM-I5/utils
+Webpage: http://tum-i5.github.io/utils/
+
+TUM: 
+Technical University of Munich
+TUM School of Computation, Information and Technology
+Chair of Scientific Computing
+Boltzmannstrasse 3
+85748 Garching
+Germany
+https://www.cs.cit.tum.de/sccs/
