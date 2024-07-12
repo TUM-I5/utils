@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2013-2024 Technical University of Munich
+# 
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Eclipse stuff
 .cproject
 .project
@@ -12,7 +16,9 @@ build
 
 .vscode/
 
-# from https://github.com/github/gitignore/blob/main/C%2B%2B.gitignore (CC0-1.0 license)
+# from https://github.com/github/gitignore/blob/main/C%2B%2B.gitignore
+# SPDX-SnippetBegin
+# SPDX-License-Identifier: CC0-1.0
 
 # Prerequisites
 *.d
@@ -46,3 +52,5 @@ build
 *.exe
 *.out
 *.app
+
+# SPDX-SnippetEnd
