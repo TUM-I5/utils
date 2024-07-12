@@ -112,7 +112,7 @@ public:
     time_t time = std::chrono::system_clock::to_time_t(timepoint);
 
     stream->buffer << utils::TimeUtils::timeAsString("%F %T", time) << "."
-                   << StringUtils::padLeft(std::to_string(milli), 3, ' ');
+                   << StringUtils::padLeft(std::to_string(milli), 3, '0');
 
     switch (t) {
     case LOG_DEBUG:
