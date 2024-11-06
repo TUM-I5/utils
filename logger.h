@@ -43,10 +43,6 @@
 #define BACKTRACE_SIZE 50
 #endif // BACKTRACE_SIZE
 
-#ifndef LOG_ALL_RANKS
-#define LOG_ALL_RANKS 0
-#endif
-
 /**
  * A collection of useful utility functions
  */
@@ -60,7 +56,7 @@ namespace utils {
 class Logger {
 public:
   /** Message type */
-  enum DebugType {
+  enum class DebugType {
     /** A debug messages */
     LOG_DEBUG,
     /** A info message (printed to stdout) */
@@ -73,6 +69,7 @@ public:
 
 private:
   static inline int rank{-1};
+  static inline bool logAll{false};
 
   /** Contains all information for a debug message */
   struct Stream {
@@ -97,16 +94,9 @@ private:
   /**
    * Pointer to all information about the message
    */
-
-  static int trueRank(int rank) {
-    if (Logger::rank >= 0) {
-      return Logger::rank;
-    }
-    return rank;
-  }
-
 public:
   static void setRank(int rank) { Logger::rank = rank; }
+  static void setLogAll(bool logAll) { Logger::logAll = logAll; }
 
   /**
    * Start a new Debug message
@@ -115,7 +105,7 @@ public:
    * @param rank Rank of the current process, only messages form rank
    *  0 will be printed
    */
-  Logger(DebugType t, int rank) : stream(new Stream(t, trueRank(rank))) {
+  Logger(DebugType t) : stream(new Stream(t, Logger::rank)) {
     auto timepoint = std::chrono::system_clock::now();
     auto milliTotal = std::chrono::duration_cast<std::chrono::milliseconds>(
                           timepoint.time_since_epoch())
@@ -127,16 +117,16 @@ public:
                    << StringUtils::padLeft(std::to_string(milli), 3, '0');
 
     switch (t) {
-    case LOG_DEBUG:
+    case DebugType::LOG_DEBUG:
       stream->buffer << " debug ";
       break;
-    case LOG_INFO:
+    case DebugType::LOG_INFO:
       stream->buffer << " info ";
       break;
-    case LOG_WARNING:
+    case DebugType::LOG_WARNING:
       stream->buffer << " warn ";
       break;
-    case LOG_ERROR:
+    case DebugType::LOG_ERROR:
       stream->buffer << " error ";
       break;
     default:
@@ -145,9 +135,9 @@ public:
     }
 
     if (stream->rank >= 0) {
-      stream->buffer << stream->rank << " :: ";
+      stream->buffer << stream->rank << " : ";
     } else {
-      stream->buffer << "- :: ";
+      stream->buffer << "- : ";
     }
   }
   /**
@@ -156,15 +146,16 @@ public:
   Logger(const Logger &o) : stream(o.stream) { stream->ref++; };
   ~Logger() {
     if (!--stream->ref) {
-      if (stream->rank == 0 || stream->rank == -1 || LOG_ALL_RANKS) {
-        if (stream->type == LOG_INFO || stream->type == LOG_DEBUG) {
+      if (stream->rank == 0 || stream->rank == -1 || Logger::logAll) {
+        if (stream->type == DebugType::LOG_INFO ||
+            stream->type == DebugType::LOG_DEBUG) {
           std::cout << stream->buffer.str() << std::endl;
         } else {
           std::cerr << stream->buffer.str() << std::endl;
         }
       }
 
-      if (stream->type == LOG_ERROR) {
+      if (stream->type == DebugType::LOG_ERROR) {
         delete stream;
         stream = 0L; // Avoid double free if LOG_ABORT does
                      // does not exit the program
@@ -346,7 +337,7 @@ inline Logger &operator<<(Logger debug, const std::vector<T> &list) {
  * @relates utils::Logger
  */
 inline utils::Logger logError(int rank = -1) {
-  return utils::Logger(utils::Logger::LOG_ERROR, rank);
+  return utils::Logger(utils::Logger::DebugType::LOG_ERROR);
 }
 
 #if LOG_LEVEL >= 1
@@ -356,7 +347,7 @@ inline utils::Logger logError(int rank = -1) {
  * @relates utils::Logger
  */
 inline utils::Logger logWarning(int rank = -1) {
-  return utils::Logger(utils::Logger::LOG_WARNING, rank);
+  return utils::Logger(utils::Logger::DebugType::LOG_WARNING);
 }
 #else  // LOG_LEVEL >= 1
 /**
@@ -374,7 +365,7 @@ inline utils::NoLogger logWarning(int = -1) { return utils::NoLogger(); }
  * @relates utils::Logger
  */
 inline utils::Logger logInfo(int rank = -1) {
-  return utils::Logger(utils::Logger::LOG_INFO, rank);
+  return utils::Logger(utils::Logger::DebugType::LOG_INFO);
 }
 #else  // LOG_LEVEL >= 2
 /**
@@ -392,7 +383,7 @@ inline utils::NoLogger logInfo(int = -1) { return utils::NoLogger(); }
  * @relates utils::Logger
  */
 inline utils::Logger logDebug(int rank = -1) {
-  return utils::Logger(utils::Logger::LOG_DEBUG, rank);
+  return utils::Logger(utils::Logger::DebugType::LOG_DEBUG);
 }
 #else  // LOG_LEVEL >= 3
 /**
