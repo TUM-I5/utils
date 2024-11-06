@@ -72,6 +72,8 @@ public:
   };
 
 private:
+  static inline int rank{-1};
+
   /** Contains all information for a debug message */
   struct Stream {
     /** The debug type */
@@ -95,7 +97,17 @@ private:
   /**
    * Pointer to all information about the message
    */
+
+  static int trueRank(int rank) {
+    if (Logger::rank >= 0) {
+      return Logger::rank;
+    }
+    return rank;
+  }
+
 public:
+  static void setRank(int rank) { Logger::rank = rank; }
+
   /**
    * Start a new Debug message
    *
@@ -103,7 +115,7 @@ public:
    * @param rank Rank of the current process, only messages form rank
    *  0 will be printed
    */
-  Logger(DebugType t, int rank) : stream(new Stream(t, rank)) {
+  Logger(DebugType t, int rank) : stream(new Stream(t, trueRank(rank))) {
     auto timepoint = std::chrono::system_clock::now();
     auto milliTotal = std::chrono::duration_cast<std::chrono::milliseconds>(
                           timepoint.time_since_epoch())
@@ -116,7 +128,7 @@ public:
 
     switch (t) {
     case LOG_DEBUG:
-      stream->buffer << " debg ";
+      stream->buffer << " debug ";
       break;
     case LOG_INFO:
       stream->buffer << " info ";
@@ -132,8 +144,8 @@ public:
       break;
     }
 
-    if (rank >= 0) {
-      stream->buffer << rank << " :: ";
+    if (stream->rank >= 0) {
+      stream->buffer << stream->rank << " :: ";
     } else {
       stream->buffer << "- :: ";
     }
@@ -153,8 +165,6 @@ public:
       }
 
       if (stream->type == LOG_ERROR) {
-        std::raise(SIGTRAP);
-
         delete stream;
         stream = 0L; // Avoid double free if LOG_ABORT does
                      // does not exit the program
@@ -176,6 +186,8 @@ public:
           // Write backtrace to stderr
           std::cerr << outputBuffer.str() << std::flush;
         }
+
+        std::raise(SIGTRAP);
 
         LOG_ABORT;
       }

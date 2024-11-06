@@ -176,7 +176,7 @@ private:
       // No automatic size detection (e.g. for stdout)
       return;
 
-      // Try to get terminal size
+    // Try to get terminal size
 #ifdef TIOCGSIZE
     struct ttysize ts;
     ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
