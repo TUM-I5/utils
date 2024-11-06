@@ -5,6 +5,7 @@
 #ifndef UTILS_LOGGER_H_
 #define UTILS_LOGGER_H_
 
+#include "utils/common.h"
 #include "utils/stringutils.h"
 #include "utils/timeutils.h"
 
@@ -17,7 +18,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <vector>
+#include <tuple>
+#include <type_traits>
 
 #ifndef LOG_LEVEL
 #ifdef NDEBUG
@@ -94,6 +96,18 @@ private:
   /**
    * Pointer to all information about the message
    */
+
+  template <typename T, std::size_t Idx>
+  static void printTuple(Logger &logger, const T &data) {
+    if constexpr (Idx < std::tuple_size_v<T>) {
+      if constexpr (Idx > 0) {
+        logger << ", ";
+      }
+      logger << std::get<Idx>(data);
+      printTuple<T, Idx + 1>(logger, data);
+    }
+  }
+
 public:
   static void setRank(int rank) { Logger::rank = rank; }
   static void setLogAll(bool logAll) { Logger::logAll = logAll; }
@@ -228,41 +242,37 @@ public:
   /**
    * Default function to add messages
    */
-  template <typename T> Logger &operator<<(T t) {
-    stream->buffer << t;
-    return maybeSpace();
-  }
+  template <typename T> Logger &operator<<(const T &data) {
+    if constexpr (std::is_invocable_r_v<Logger &, T, Logger &>) {
+      return std::invoke(data);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+      stream->buffer << '"' << data << '"';
+      return maybeSpace();
+    } else if constexpr (CanOutput<T>::Value) {
+      stream->buffer << data;
+      return maybeSpace();
+    } else if constexpr (IsIterable<T>::Value) {
+      nospace() << '[';
+      auto it = std::begin(data);
+      if (it != std::end(data)) {
+        *this << *it;
+        ++it;
+      }
+      for (; it != std::end(data); ++it) {
+        *this << ", " << *it;
+      }
+      *this << ']';
 
-  /**
-   * Add a string variable to the message
-   */
-  Logger &operator<<(const std::string &t) {
-    stream->buffer << '"' << t << '"';
-    return maybeSpace();
-  }
+      return space();
+    } else if constexpr (IsGettable<T>::Value) {
+      nospace() << '{';
+      printTuple(*this, data);
+      *this << '}';
 
-  /**
-   * Add a string variable to the message
-   */
-  Logger &operator<<(std::string &t) {
-    stream->buffer << '"' << t << '"';
-    return maybeSpace();
-  }
-
-  /**
-   * Operator to add functions like std::endl
-   */
-  Logger &operator<<(std::ostream &(*func)(std::ostream &)) {
-    stream->buffer << func;
-    return *this; // No space in this case
-  }
-
-  /**
-   * Operator for enabling/disabling automatic spacing
-   */
-  Logger &operator<<(Logger &(*func)(Logger &)) {
-    func(*this);
-    return *this;
+      return space();
+    } else {
+      static_assert(false, "Output for the given type not implemented.");
+    }
   }
 };
 
@@ -308,24 +318,6 @@ public:
    */
   NoLogger &operator<<(Logger &(*func)(Logger &)) { return *this; }
 };
-
-/**
- * Add a std::vector<T> to the message
- *
- * @relates utils::Logger
- */
-template <typename T>
-inline Logger &operator<<(Logger debug, const std::vector<T> &list) {
-  debug.nospace() << '(';
-  for (size_t i = 0; i < list.size(); i++) {
-    if (i)
-      debug << ", ";
-    debug << list[i];
-  }
-  debug << ')';
-
-  return debug.space();
-}
 
 } // namespace utils
 
