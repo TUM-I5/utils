@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <execinfo.h>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -244,7 +245,7 @@ public:
    */
   template <typename T> Logger &operator<<(const T &data) {
     if constexpr (std::is_invocable_r_v<Logger &, T, Logger &>) {
-      return std::invoke(data);
+      return std::invoke(data, *this);
     } else if constexpr (std::is_same_v<T, std::string>) {
       stream->buffer << '"' << data << '"';
       return maybeSpace();
@@ -266,13 +267,21 @@ public:
       return space();
     } else if constexpr (IsGettable<T>::Value) {
       nospace() << '{';
-      printTuple(*this, data);
+      printTuple<T, 0>(*this, data);
       *this << '}';
 
       return space();
     } else {
       static_assert(false, "Output for the given type not implemented.");
     }
+  }
+
+  /**
+   * Operator to add functions like std::endl
+   */
+  Logger &operator<<(std::ostream &(*func)(std::ostream &)) {
+    stream->buffer << func;
+    return *this; // No space in this case
   }
 };
 
