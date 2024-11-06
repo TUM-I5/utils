@@ -11,6 +11,7 @@ function( cxx_test target source )
     set(CPP_FULL_NAME "${CMAKE_CURRENT_BINARY_DIR}/${CPP_FILE_NAME}")
     CXXTEST_ADD_TEST( ${target} "${CPP_FULL_NAME}" ${source} )
     target_link_libraries( ${target} PRIVATE utils )
+    set_property(TARGET ${target} PROPERTY CXX_STANDARD 17)
 endfunction( cxx_test )
 
 # Add tests
