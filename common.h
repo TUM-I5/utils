@@ -9,13 +9,6 @@
 
 namespace utils {
 
-// available since C++11(?)
-template <typename T> [[deprecated]] void swap(T &a, T &b) {
-  T tmp = a;
-  a = b;
-  b = tmp;
-}
-
 template <typename T> struct has_size {
   template <typename U>
   static constexpr decltype(std::declval<U>().size(), bool()) test(int) {

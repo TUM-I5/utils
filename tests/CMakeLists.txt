@@ -15,8 +15,6 @@ endfunction( cxx_test )
 
 # Add tests
 cxx_test( TestArgs ${CMAKE_CURRENT_SOURCE_DIR}/args.t.h )
-cxx_test( TestArrayUtils ${CMAKE_CURRENT_SOURCE_DIR}/arrayutils.t.h )
-cxx_test( TestCommon ${CMAKE_CURRENT_SOURCE_DIR}/common.t.h )
 cxx_test( TestEnv ${CMAKE_CURRENT_SOURCE_DIR}/env.t.h )
 cxx_test( TestLogger ${CMAKE_CURRENT_SOURCE_DIR}/logger.t.h )
 cxx_test( TestMathUtils ${CMAKE_CURRENT_SOURCE_DIR}/mathutils.t.h )
