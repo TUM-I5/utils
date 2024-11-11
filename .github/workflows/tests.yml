@@ -29,5 +29,5 @@ jobs:
           cd build
           cmake .. -GNinja -DTESTING=ON
           ninja
-          ninja test
+          ctest --rerun-failed --output-on-failure
           cd ..
