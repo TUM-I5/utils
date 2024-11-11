@@ -71,6 +71,7 @@ public:
   };
 
 private:
+  static inline int displayRank{0};
   static inline int rank{-1};
   static inline bool logAll{false};
 
@@ -87,12 +88,14 @@ private:
     /** Print additional space */
     bool space;
 
+    bool broadcast;
+
     /**
      * Set defaults for a debug message
      */
-    Stream(DebugType t, int r)
-        : type(t), rank(r), ref(1), buffer(std::stringstream::out),
-          space(true) {}
+    Stream(DebugType t, int r, bool broadcast)
+        : type(t), rank(r), ref(1), buffer(std::stringstream::out), space(true),
+          broadcast(broadcast) {}
   } *stream;
   /**
    * Pointer to all information about the message
@@ -110,6 +113,7 @@ private:
   }
 
 public:
+  static void setDisplayRank(int rank) { Logger::displayRank = rank; }
   static void setRank(int rank) { Logger::rank = rank; }
   static void setLogAll(bool logAll) { Logger::logAll = logAll; }
 
@@ -120,7 +124,8 @@ public:
    * @param rank Rank of the current process, only messages form rank
    *  0 will be printed
    */
-  Logger(DebugType t) : stream(new Stream(t, Logger::rank)) {
+  Logger(DebugType t, bool broadcast)
+      : stream(new Stream(t, Logger::rank, broadcast)) {
     auto timepoint = std::chrono::system_clock::now();
     auto milliTotal = std::chrono::duration_cast<std::chrono::milliseconds>(
                           timepoint.time_since_epoch())
@@ -161,7 +166,8 @@ public:
   Logger(const Logger &o) : stream(o.stream) { stream->ref++; };
   ~Logger() {
     if (!--stream->ref) {
-      if (stream->rank == 0 || stream->rank == -1 || Logger::logAll) {
+      if (stream->rank == Logger::displayRank || stream->rank == -1 ||
+          Logger::logAll || stream->broadcast) {
         if (stream->type == DebugType::LOG_INFO ||
             stream->type == DebugType::LOG_DEBUG) {
           std::cout << stream->buffer.str() << std::endl;
@@ -337,8 +343,8 @@ public:
  *
  * @relates utils::Logger
  */
-inline utils::Logger logError(int rank = -1) {
-  return utils::Logger(utils::Logger::DebugType::LOG_ERROR);
+inline utils::Logger logError(bool broadcast = true) {
+  return utils::Logger(utils::Logger::DebugType::LOG_ERROR, broadcast);
 }
 
 #if LOG_LEVEL >= 1
@@ -347,8 +353,8 @@ inline utils::Logger logError(int rank = -1) {
  *
  * @relates utils::Logger
  */
-inline utils::Logger logWarning(int rank = -1) {
-  return utils::Logger(utils::Logger::DebugType::LOG_WARNING);
+inline utils::Logger logWarning(bool broadcast = false) {
+  return utils::Logger(utils::Logger::DebugType::LOG_WARNING, broadcast);
 }
 #else  // LOG_LEVEL >= 1
 /**
@@ -356,7 +362,9 @@ inline utils::Logger logWarning(int rank = -1) {
  *
  * @relates utils::NoLogger
  */
-inline utils::NoLogger logWarning(int = -1) { return utils::NoLogger(); }
+inline utils::NoLogger logWarning(bool broadcast = false) {
+  return utils::NoLogger();
+}
 #endif // LOG_LEVEL >= 1
 
 #if LOG_LEVEL >= 2
@@ -365,8 +373,8 @@ inline utils::NoLogger logWarning(int = -1) { return utils::NoLogger(); }
  *
  * @relates utils::Logger
  */
-inline utils::Logger logInfo(int rank = -1) {
-  return utils::Logger(utils::Logger::DebugType::LOG_INFO);
+inline utils::Logger logInfo(bool broadcast = false) {
+  return utils::Logger(utils::Logger::DebugType::LOG_INFO, broadcast);
 }
 #else  // LOG_LEVEL >= 2
 /**
@@ -374,7 +382,9 @@ inline utils::Logger logInfo(int rank = -1) {
  *
  * @relates utils::NoLogger
  */
-inline utils::NoLogger logInfo(int = -1) { return utils::NoLogger(); }
+inline utils::NoLogger logInfo(bool broadcast = false) {
+  return utils::NoLogger();
+}
 #endif // LOG_LEVEL >= 2
 
 #if LOG_LEVEL >= 3
@@ -383,8 +393,8 @@ inline utils::NoLogger logInfo(int = -1) { return utils::NoLogger(); }
  *
  * @relates utils::Logger
  */
-inline utils::Logger logDebug(int rank = -1) {
-  return utils::Logger(utils::Logger::DebugType::LOG_DEBUG);
+inline utils::Logger logDebug(bool broadcast = false) {
+  return utils::Logger(utils::Logger::DebugType::LOG_DEBUG, broadcast);
 }
 #else  // LOG_LEVEL >= 3
 /**
@@ -392,7 +402,9 @@ inline utils::Logger logDebug(int rank = -1) {
  *
  * @relates utils::NoLogger
  */
-inline utils::NoLogger logDebug(int = -1) { return utils::NoLogger(); }
+inline utils::NoLogger logDebug(bool broadcast = false) {
+  return utils::NoLogger();
+}
 #endif // LOG_LEVEL >= 3
 
 // Use for variables unused when compiling with NDEBUG
