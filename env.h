@@ -19,16 +19,14 @@ namespace utils {
  * Function(s) to handle environment variables
  */
 class Env {
-private:
-  Env() = delete;
-  static inline std::unordered_map<std::string, std::optional<std::string>>
-      cache;
+  private:
+  static inline std::unordered_map<std::string, std::optional<std::string>> cache;
 
-public:
+  public:
   template <typename T>
-  static std::optional<T> getOptional(const std::string &name) {
+  static auto getOptional(const std::string& name) -> std::optional<T> {
     if (cache.find(name) == cache.end()) {
-      char *value = std::getenv(name.c_str());
+      char* value = std::getenv(name.c_str());
       if (value == nullptr) {
         cache[name] = std::optional<std::string>();
       } else {
@@ -45,8 +43,8 @@ public:
   }
 
   template <typename T>
-  static std::enable_if_t<!std::is_array_v<T>, std::decay_t<T>>
-  get(const std::string &name, T &&defaultVal) {
+  static auto get(const std::string& name, T&& defaultVal)
+      -> std::enable_if_t<!std::is_array_v<T>, std::decay_t<T>> {
     // mirror requirements for an optional
     const auto value = getOptional<std::decay_t<T>>(name);
 
@@ -58,8 +56,8 @@ public:
   }
 
   template <typename T>
-  static std::enable_if_t<std::is_convertible_v<T *, std::string>, std::string>
-  get(const std::string &name, const T *defaultVal) {
+  static auto get(const std::string& name, const T* defaultVal)
+      -> std::enable_if_t<std::is_convertible_v<T*, std::string>, std::string> {
     const auto value = getOptional<std::string>(name);
 
     if (value.has_value()) {

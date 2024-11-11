@@ -11,15 +11,14 @@ namespace utils {
  * A collection of useful math functions
  */
 class MathUtils {
-  MathUtils() = delete;
-
-public:
+  public:
   /**
    * Finds the smallest value x >= a such that x % k == 0
    *
    * a and k should be of kind "int".
    */
-  template <typename T> static T roundUp(T a, T k) {
+  template <typename T>
+  static auto roundUp(T a, T k) -> T {
     return ((a + k - 1) / k) * k;
   }
 
@@ -30,7 +29,8 @@ public:
    * @param b
    * @return
    */
-  template <typename T> static T gcd(T a, T b) {
+  template <typename T>
+  static auto gcd(T a, T b) -> T {
     T c = a % b;
     while (c != 0) {
       a = b;

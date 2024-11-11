@@ -7,6 +7,7 @@
 
 #include <string>
 #include <sys/stat.h>
+#include <utility>
 
 #include "utils/stringutils.h"
 
@@ -16,15 +17,15 @@ namespace utils {
  * Manipulates file/directory names and paths
  */
 class Path {
-private:
+  private:
   std::string m_path;
 
-public:
-  Path() {}
+  public:
+  Path() = default;
 
-  Path(const char *path) : m_path(path) { init(); }
+  Path(const char* path) : m_path(path) { init(); }
 
-  Path(const std::string &path) : m_path(path) { init(); }
+  Path(std::string path) : m_path(std::move(path)) { init(); }
 
   /**
    * @return The string representing the current path
@@ -34,10 +35,11 @@ public:
   /**
    * @return The basename of the path
    */
-  std::string basename() const {
+  [[nodiscard]] auto basename() const -> std::string {
     const size_t lastSlash = m_path.find_last_of(separators());
-    if (lastSlash == std::string::npos)
+    if (lastSlash == std::string::npos) {
       return m_path;
+    }
 
     return m_path.substr(lastSlash + 1);
   }
@@ -45,10 +47,11 @@ public:
   /**
    * @return The directory name of the path
    */
-  std::string dirname() const {
+  [[nodiscard]] auto dirname() const -> std::string {
     const size_t lastSlash = m_path.find_last_of(separators());
-    if (lastSlash == std::string::npos)
+    if (lastSlash == std::string::npos) {
       return "";
+    }
 
     return m_path.substr(0, lastSlash);
   }
@@ -56,13 +59,13 @@ public:
   /**
    * @return The directory of the path
    */
-  Path dir() const { return Path(dirname()); }
+  [[nodiscard]] auto dir() const -> Path { return Path(dirname()); }
 
   /**
    * @return True of the path is a file/directory
    */
-  bool exists() const {
-    struct stat buffer;
+  [[nodiscard]] auto exists() const -> bool {
+    struct stat buffer{};
     return (stat(m_path.c_str(), &buffer) == 0);
   }
 
@@ -72,25 +75,26 @@ public:
    * @param other The path that should be appended (has to be relative)
    * @return A path where other is appended to the current path
    */
-  Path operator+(const Path &other) const {
-    if (m_path.empty())
+  auto operator+(const Path& other) const -> Path {
+    if (m_path.empty()) {
       return other;
-    if (other.m_path.empty())
+    }
+    if (other.m_path.empty()) {
       return *this;
+    }
 
     return Path(m_path + SEPARATOR + other.m_path);
   }
 
-public:
-  static const char *separator() {
-    static const std::string sep(1, SEPARATOR);
-    return sep.c_str();
+  static auto separator() -> const char* {
+    static const std::string Sep(1, SEPARATOR);
+    return Sep.c_str();
   }
 
   /**
    * @return A string containing all possible separators
    */
-  static const char *separators() {
+  static auto separators() -> const char* {
 #if __unix__
     return "/";
 #else  // __unix__
@@ -98,14 +102,15 @@ public:
 #endif // __unix__
   }
 
-private:
+  private:
   void init() {
     // Remove trailing separator
-    if (StringUtils::endsWith(m_path, separator()))
+    if (StringUtils::endsWith(m_path, separator())) {
       StringUtils::replaceLast(m_path, separator(), "");
+    }
   }
 
-public:
+  public:
 #ifdef __unix__
   static const char SEPARATOR = '/';
 #else  // __unix__

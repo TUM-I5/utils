@@ -22,39 +22,36 @@ namespace utils {
 #define ROTATION_IND "-\\|/"
 
 class Progress {
-private:
+  private:
   enum OutputType {
     DISABLED,
     TTY
     // TODO Support file output
   };
 
-private:
   /** The output stream we use */
-  std::ostream *m_output;
+  std::ostream* m_output;
 
   OutputType m_type;
 
   /** Total number of updates */
-  unsigned long m_total;
+  unsigned long m_total{};
 
   /** Current update status */
-  unsigned long m_current;
+  unsigned long m_current{0};
 
   /** Size of the progress bar */
-  unsigned long m_barSize;
+  unsigned long m_barSize{80};
 
   /** Rotation indicator position */
-  unsigned char m_rotPosition;
+  unsigned char m_rotPosition{0};
 
   /** TTY handle (if used) */
   std::ofstream m_tty;
 
-public:
-  Progress(unsigned long total = 100)
-      : m_current(0), m_barSize(80) /* Default size */, m_rotPosition(0) {
-    std::string envOutput =
-        Env::get<std::string>("UTILS_PROGRESS_OUTPUT", "STDERR");
+  public:
+  Progress(unsigned long total = 100) {
+    std::string envOutput = Env::get<std::string>("UTILS_PROGRESS_OUTPUT", "STDERR");
 
     StringUtils::toUpper(envOutput);
 
@@ -62,16 +59,17 @@ public:
       m_output = &std::cout;
       m_type = TTY;
 
-      setSize(isatty(fileno(stdout)));
+      setSize(isatty(fileno(stdout)) != 0);
     } else if (envOutput == "STDERR") {
       m_output = &std::cerr;
       m_type = TTY;
 
-      setSize(isatty(fileno(stderr)));
+      setSize(isatty(fileno(stderr)) != 0);
     } else if (envOutput == "TTY") {
       m_tty.open("/dev/tty"); // try unix
-      if (!m_tty)
+      if (!m_tty) {
         m_tty.open("CON:"); // try windows
+      }
 
       if (m_tty) {
         m_output = &m_tty;
@@ -106,8 +104,9 @@ public:
   void update(unsigned long current) {
     set(current);
 
-    if (m_type == DISABLED)
+    if (m_type == DISABLED) {
       return;
+    }
 
     // Calculuate the ratio of complete-to-incomplete.
     const float ratio = m_current / static_cast<float>(m_total);
@@ -121,11 +120,13 @@ public:
     const unsigned long comChars = realSize * ratio;
 
     // Show the load bar
-    for (unsigned int i = 0; i < comChars; i++)
+    for (unsigned int i = 0; i < comChars; i++) {
       (*m_output) << '=';
+    }
 
-    for (unsigned int i = comChars; i < realSize; i++)
+    for (unsigned int i = comChars; i < realSize; i++) {
       (*m_output) << ' ';
+    }
 
     (*m_output) << "] ";
 
@@ -151,30 +152,33 @@ public:
    * Removes the progress bar from the output
    */
   void clear() {
-    if (m_type == DISABLED)
+    if (m_type == DISABLED) {
       return;
+    }
 
-    for (unsigned int i = 0; i < m_barSize; i++)
+    for (unsigned int i = 0; i < m_barSize; i++) {
       (*m_output) << ' ';
+    }
     (*m_output) << '\r' << std::flush;
   }
 
-private:
+  private:
   /**
    * Sets progress bar size according to the terminal size
    */
   void setSize(bool automatic = true) {
     // Check if size is set in env
-    unsigned long size = Env::get<unsigned long>("UTILS_PROGRESS_SIZE", 0);
+    const unsigned long size = Env::get<unsigned long>("UTILS_PROGRESS_SIZE", 0);
 
     if (size > 0) {
       m_barSize = size;
       return;
     }
 
-    if (!automatic)
+    if (!automatic) {
       // No automatic size detection (e.g. for stdout)
       return;
+    }
 
     // Try to get terminal size
 #ifdef TIOCGSIZE
@@ -182,7 +186,7 @@ private:
     ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
     m_barSize = ts.ts_cols;
 #elif defined(TIOCGWINSZ)
-    struct winsize ts;
+    struct winsize ts{};
     ioctl(STDIN_FILENO, TIOCGWINSZ, &ts);
     m_barSize = ts.ws_col;
 #else
