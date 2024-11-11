@@ -278,6 +278,7 @@ public:
 
       return space();
     } else {
+      // https://stackoverflow.com/questions/38304847/how-does-a-failed-static-assert-work-in-an-if-constexpr-false-block#comment119622305_64354296
       static_assert(sizeof(T) == 0,
                     "Output for the given type not implemented.");
     }
