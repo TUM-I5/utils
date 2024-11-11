@@ -278,7 +278,8 @@ public:
 
       return space();
     } else {
-      static_assert(false, "Output for the given type not implemented.");
+      static_assert(sizeof(T) == 0,
+                    "Output for the given type not implemented.");
     }
   }
 
