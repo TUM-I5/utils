@@ -112,7 +112,7 @@ class StringUtils {
    * @param str The string that should be converted
    */
   template <typename T>
-  static auto parse(const std::string& str) -> T {
+  static auto parseInternal(const std::string& str) -> T {
     T result;
     std::istringstream(str) >> result;
 
@@ -126,9 +126,9 @@ class StringUtils {
    * @param advanced True of advanced conversions should be enabled
    */
   template <typename T>
-  static auto parse(const std::string& str, bool adavanced) -> T {
+  static auto parse(const std::string& str) -> T {
     // By default the advanced mode is disabled for all datatypes
-    return parse<T>(str);
+    return parseInternal<T>(str);
   }
 
   template <typename T>
@@ -272,7 +272,7 @@ inline auto StringUtils::parse(const std::string& str) -> bool {
     return false;
   }
 
-  return parse<bool>(str);
+  return parseInternal<bool>(str);
 }
 
 } // namespace utils

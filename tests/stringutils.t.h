@@ -24,14 +24,14 @@ class TestStringUtils : public CxxTest::TestSuite {
   static void testParse() {
     // Normal parser
     // TODO more tests
-    TS_ASSERT_EQUALS(StringUtils::parse<int>("-1", 0), -1);
+    TS_ASSERT_EQUALS(StringUtils::parse<int>("-1"), -1);
 
     // Advanced parser
-    TS_ASSERT(StringUtils::parse<bool>("on", true));
-    TS_ASSERT(StringUtils::parse<bool>("yes", true));
-    TS_ASSERT(StringUtils::parse<bool>("on", true));
-    TS_ASSERT(!StringUtils::parse<bool>("off", true));
-    TS_ASSERT(!StringUtils::parse<bool>("abc", true));
+    TS_ASSERT(StringUtils::parse<bool>("on"));
+    TS_ASSERT(StringUtils::parse<bool>("yes"));
+    TS_ASSERT(StringUtils::parse<bool>("on"));
+    TS_ASSERT(!StringUtils::parse<bool>("off"));
+    TS_ASSERT(!StringUtils::parse<bool>("abc"));
   }
 
   static void testParseArray() {
