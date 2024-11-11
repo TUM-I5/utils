@@ -13,8 +13,8 @@
 using namespace utils;
 
 class TestEnv : public CxxTest::TestSuite {
-public:
-  void testGet() {
+  public:
+  static void testGet() {
     TS_ASSERT_EQUALS(setenv("UTILS_INT", "42", 1), 0);
     TS_ASSERT_EQUALS(Env::get<int>("UTILS_INT", 0), 42);
     TS_ASSERT_EQUALS(Env::get("UTILS_INT", "0"), std::string("42"));

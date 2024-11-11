@@ -10,7 +10,7 @@
 using namespace utils;
 
 class TestTimeUtils : public CxxTest::TestSuite {
-public:
+  public:
   void testFoo() {
     // TODO
   }

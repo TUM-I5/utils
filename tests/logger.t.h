@@ -10,7 +10,7 @@
 using namespace utils;
 
 class TestLogger : public CxxTest::TestSuite {
-public:
+  public:
   void testFoo() {
     // TODO
   }

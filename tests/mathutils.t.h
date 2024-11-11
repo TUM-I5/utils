@@ -10,13 +10,13 @@
 using namespace utils;
 
 class TestMathUtils : public CxxTest::TestSuite {
-public:
-  void testRoundUp() {
+  public:
+  static void testRoundUp() {
     TS_ASSERT_EQUALS(MathUtils::roundUp(6, 4), 8);
     TS_ASSERT_EQUALS(MathUtils::roundUp(3, 3), 3);
     TS_ASSERT_EQUALS(MathUtils::roundUp(12, 10), 20);
   }
 
-  void testGcd() { TS_ASSERT_EQUALS(MathUtils::gcd(6, 9), 3); }
+  static void testGcd() { TS_ASSERT_EQUALS(MathUtils::gcd(6, 9), 3); }
 };
 #endif // UTILS_TESTS_MATHUTILS_T_H_
