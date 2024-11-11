@@ -269,6 +269,9 @@ inline bool StringUtils::parse(const std::string &str, bool advanced) {
   if (s == "on" || s == "yes" || s == "true") {
     return true;
   }
+  if (s == "off" || s == "no" || s == "false") {
+    return false;
+  }
 
   return parse<bool>(str);
 }
