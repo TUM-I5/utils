@@ -9,9 +9,11 @@
 #include "utils/logger.h"
 #include "utils/stringutils.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <stdio.h>
 #include <string>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -182,11 +184,15 @@ class Progress {
 
     // Try to get terminal size
 #ifdef TIOCGSIZE
-    struct ttysize ts;
+    struct ttysize ts{};
+
+    // NOLINTNEXTLINE
     ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
     m_barSize = ts.ts_cols;
 #elif defined(TIOCGWINSZ)
     struct winsize ts{};
+
+    // NOLINTNEXTLINE
     ioctl(STDIN_FILENO, TIOCGWINSZ, &ts);
     m_barSize = ts.ws_col;
 #else

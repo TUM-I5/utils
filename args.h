@@ -8,15 +8,18 @@
 #include "utils/stringutils.h"
 
 #include <algorithm>
-#include <getopt.h>
+#include <cctype>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
-#include <map>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+// NOLINTNEXTLINE
+#include <getopt.h>
 
 namespace utils {
 

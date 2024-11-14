@@ -17,7 +17,9 @@
 #include <execinfo.h>
 #include <functional>
 #include <iostream>
+#include <signal.h>
 #include <sstream>
+#include <stdlib.h>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -29,10 +31,6 @@
 #define LOG_LEVEL 3
 #endif // NDEBUG
 #endif // LOG_LEVEL
-
-#ifndef LOG_PREFIX
-#define LOG_PREFIX ""
-#endif // DEBUG_PRFIX
 
 #ifndef LOG_ABORT
 #ifdef MPI_VERSION
@@ -157,10 +155,14 @@ class Logger {
       stream->buffer << "- : ";
     }
   }
-  /**
-   * Copy constructor
-   */
-  Logger(const Logger& o) : stream(o.stream) { stream->ref++; };
+
+  Logger(const Logger& o) : stream(o.stream) { stream->ref++; }
+
+  // for now, delete the move constructors/operators
+
+  Logger(Logger&& o) = delete;
+  auto operator=(Logger&& o) = delete;
+
   ~Logger() {
     if (--stream->ref == 0) {
       if (stream->rank == Logger::displayRank || stream->rank == -1 || Logger::logAll ||

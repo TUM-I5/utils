@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
-#include <functional>
-#include <locale>
 #include <sstream>
 #include <string>
 #include <vector>

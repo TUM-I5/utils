@@ -5,6 +5,7 @@
 #ifndef UTILS_PATH_H_
 #define UTILS_PATH_H_
 
+#include <cstddef>
 #include <string>
 #include <sys/stat.h>
 #include <utility>
