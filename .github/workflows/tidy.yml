@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2024 Technical University of Munich
+# 
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: clang-tidy
+on:
+  - push
+
+jobs:
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: apt-get
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libomp-dev libopenmpi-dev openmpi-bin openmpi-common ninja-build
+
+          # keep, for once clang-19 or higher is needed
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main"
+          sudo add-apt-repository "deb-src http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main"
+          sudo apt-get update -y
+
+          sudo apt-get -y install clang-19 clang-tidy-19 libomp-19-dev
+
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:deadsnakes/ppa
+          sudo apt-get install -y cxxtest
+
+          sudo pip3 install numpy
+          sudo mkdir -p /opt/dependencies
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: clang-tidy
+        run: |
+          set -euo pipefail
+          clang-tidy-19 --version
+          which clang-tidy-19
+          git submodule update --init
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DTESTING=ON -GNinja
+          sed -i 's/-fprofile-abs-path //g' compile_commands.json
+          for f in $(find ../ -iname '*.h' -not -path '../tests/*'); do clang-tidy-19 -p . $f; done

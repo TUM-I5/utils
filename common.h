@@ -1,60 +1,80 @@
-/**
- * @file
- *  This file is part of UTILS
- *
- * @author Sebastian Rettenberger <sebastian.rettenberger@tum.de>
- *
- * @copyright Copyright (c) 2016, Technische Universitaet Muenchen.
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- *  1. Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *
- *  2. Redistributions in binary form must reproduce the above copyright notice
- *     this list of conditions and the following disclaimer in the documentation
- *     and/or other materials provided with the distribution.
- *
- *  3. Neither the name of the copyright holder nor the names of its
- *     contributors may be used to endorse or promote products derived from this
- *     software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- *  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- *  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- *  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
+// SPDX-FileCopyrightText: 2016-2024 Technical University of Munich
+//
+// SPDX-License-Identifier: BSD-3-Clause
+//
+// SPDX-FileContributor: Sebastian Rettenberger
+// SPDX-FileContributor: David Schneller
 
-#ifndef UTILS_COMMON_H
-#define UTILS_COMMON_H
+#ifndef UTILS_COMMON_H_
+#define UTILS_COMMON_H_
 
-namespace utils
-{
+#include <ostream>
+#include <utility>
 
-template<typename T>
-void swap(T& a, T& b)
-{
-	T tmp = a;
-	a = b;
-	b = tmp;
-}
+namespace utils {
 
-template<typename T>
-struct has_size {
-	template<typename U> static constexpr decltype(std::declval<U>().size(), bool()) test(int) { return true; }
-	template<typename U> static constexpr bool test(...) { return false; }
-	static constexpr bool value = test<T>(int());
+template <typename T>
+struct HasSize {
+  template <typename U>
+  static constexpr auto test(int /*unused*/) -> decltype(std::declval<U>().size(), bool()) {
+    return true;
+  }
+  template <typename U>
+  static constexpr auto test(...) -> bool {
+    return false;
+  }
+  static constexpr bool Value = test<T>(int());
 };
 
-}
+template <typename T>
+struct IsIterable {
+  template <typename U>
+  static constexpr auto beginTest(int /*unused*/)
+      -> decltype(std::begin(std::declval<U>()), bool()) {
+    return true;
+  }
+  template <typename U>
+  static constexpr auto beginTest(...) -> bool {
+    return false;
+  }
+  template <typename U>
+  static constexpr auto endTest(int /*unused*/) -> decltype(std::end(std::declval<U>()), bool()) {
+    return true;
+  }
+  template <typename U>
+  static constexpr auto endTest(...) -> bool {
+    return false;
+  }
+  static constexpr bool Value = beginTest<T>(int()) && endTest<T>(int());
+};
 
-#endif // UTILS_COMMON_H
+template <typename T>
+struct CanOutput {
+  template <typename U>
+  static constexpr auto test(int /*unused*/)
+      -> decltype(operator<<(std::declval<std::ostream>(), std::declval<U>()), bool()) {
+    return true;
+  }
+  template <typename U>
+  static constexpr auto test(...) -> bool {
+    return false;
+  }
+  static constexpr bool Value = test<T>(int());
+};
+
+template <typename T>
+struct IsGettable {
+  template <typename U>
+  static constexpr auto test(int /*unused*/) -> decltype(std::tuple_size<U>::value, bool()) {
+    return true;
+  }
+  template <typename U>
+  static constexpr auto test(...) -> bool {
+    return false;
+  }
+  static constexpr bool Value = test<T>(int());
+};
+
+} // namespace utils
+
+#endif // UTILS_COMMON_H_

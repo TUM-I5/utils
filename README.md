@@ -1,3 +1,9 @@
+<!--
+    SPDX-FileCopyrightText: 2013-2024 Technical University of Munich
+
+    SPDX-License-Identifier: BSD-3-Clause
+-->
+
 UTILS
 =====
 
@@ -12,8 +18,3 @@ License
 -------
 
 UTILS is released under BSD-3 (see [COPYING](COPYING))
-
-Build Status
-------------
-
-[![Build Status](https://travis-ci.org/TUM-I5/utils.svg?branch=master)](https://travis-ci.org/TUM-I5/utils)
