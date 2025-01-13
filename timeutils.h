@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2013-2024 Technical University of Munich
 //
 // SPDX-License-Identifier: BSD-3-Clause
+//
+// SPDX-FileContributor: Sebastian Rettenberger
 
 #ifndef UTILS_TIMEUTILS_H_
 #define UTILS_TIMEUTILS_H_

@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2013-2024 Technical University of Munich
 //
 // SPDX-License-Identifier: BSD-3-Clause
+//
+// SPDX-FileContributor: Sebastian Rettenberger
+// SPDX-FileContributor: David Schneller
 
 #ifndef UTILS_LOGGER_H_
 #define UTILS_LOGGER_H_
