@@ -53,9 +53,11 @@ class Progress {
   /** TTY handle (if used) */
   std::ofstream m_tty;
 
+  Env env{"UTILS_PROGRESS_"};
+
   public:
   Progress(unsigned long total = 100) {
-    std::string envOutput = Env::get<std::string>("UTILS_PROGRESS_OUTPUT", "STDERR");
+    std::string envOutput = env.get<std::string>("OUTPUT", "STDERR");
 
     StringUtils::toUpper(envOutput);
 
@@ -172,7 +174,7 @@ class Progress {
    */
   void setSize(bool automatic = true) {
     // Check if size is set in env
-    const unsigned long size = Env::get<unsigned long>("UTILS_PROGRESS_SIZE", 0);
+    const auto size = env.get<unsigned long>("SIZE", 0);
 
     if (size > 0) {
       m_barSize = size;
