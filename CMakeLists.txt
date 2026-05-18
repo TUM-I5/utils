@@ -10,8 +10,7 @@ add_library(utils INTERFACE)
 
 set_property(TARGET utils PROPERTY CXX_STANDARD 17)
 
-# Make sure we find the header files with #include "utils/..." (TODO: don't)
-target_include_directories(utils INTERFACE ${CMAKE_SOURCE_DIR}/..)
+target_include_directories(utils INTERFACE include)
 
 option(TESTING "Build unit tests" OFF)
 
