@@ -65,7 +65,7 @@ struct CanOutput {
 template <typename T>
 struct IsGettable {
   template <typename U>
-  static constexpr auto test(int /*unused*/) -> decltype(std::tuple_size<U>::value, bool()) {
+  static constexpr auto test(int /*unused*/) -> decltype(std::tuple_size_v<U>, bool()) {
     return true;
   }
   template <typename U>

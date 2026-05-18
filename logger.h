@@ -407,11 +407,4 @@ inline auto logDebug(bool broadcast = false) -> utils::Logger {
 inline utils::NoLogger logDebug(bool broadcast = false) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 3
 
-// Use for variables unused when compiling with NDEBUG
-#ifdef NDEBUG
-#define NDBG_UNUSED(x) ((void)x)
-#else // NDEBUG
-#define NDBG_UNUSED(x)
-#endif // NDEBUG
-
 #endif // UTILS_LOGGER_H_
