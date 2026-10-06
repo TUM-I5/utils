@@ -32,10 +32,14 @@ class TimeUtils {
   static auto timeAsString(const std::string& formatString, time_t time) -> std::string {
     const struct tm* timeinfo = localtime(&time);
 
+    // strftime returns 0 both if the buffer is too small and if the result is empty (or the
+    // format is not understood by the C runtime); thus, only grow the buffer up to a limit
+    const size_t maxSize = formatString.size() * 64 + 256;
+
     std::string buffer;
-    buffer.resize(formatString.size() * 2);
+    buffer.resize(formatString.size() * 2 + 1);
     size_t len = strftime(buffer.data(), buffer.size(), formatString.c_str(), timeinfo);
-    while (len == 0) {
+    while (len == 0 && buffer.size() < maxSize) {
       buffer.resize(buffer.size() * 2);
       len = strftime(buffer.data(), buffer.size(), formatString.c_str(), timeinfo);
     }
