@@ -17,7 +17,6 @@
 #include <csignal>
 #include <cstdlib>
 #include <ctime>
-#include <execinfo.h>
 #include <functional>
 #include <iostream>
 #include <signal.h>
@@ -26,6 +25,12 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+
+// backtraces are only available where execinfo.h is (e.g. glibc and macOS, but not Windows)
+#if __has_include(<execinfo.h>)
+#include <execinfo.h>
+#define UTILS_LOGGER_HAS_BACKTRACE 1
+#endif
 
 #ifndef LOG_LEVEL
 #ifdef NDEBUG
@@ -131,7 +136,8 @@ class Logger {
     auto milli = milliTotal % 1000;
     const time_t time = std::chrono::system_clock::to_time_t(timepoint);
 
-    stream->buffer << utils::TimeUtils::timeAsString("%F %T", time) << "."
+    // (spelled out, since not every C runtime understands %F or %T; e.g. msvcrt.dll does not)
+    stream->buffer << utils::TimeUtils::timeAsString("%Y-%m-%d %H:%M:%S", time) << "."
                    << StringUtils::padLeft(std::to_string(milli), 3, '0');
 
     switch (t) {
@@ -182,6 +188,7 @@ class Logger {
         stream = nullptr; // Avoid double free if LOG_ABORT does
                           // does not exit the program
 
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
         // Backtrace
         if (BACKTRACE_SIZE > 0) {
           void* buffer[BACKTRACE_SIZE];
@@ -199,8 +206,13 @@ class Logger {
           // Write backtrace to stderr
           std::cerr << outputBuffer.str() << std::flush;
         }
+#endif // UTILS_LOGGER_HAS_BACKTRACE
 
+        // Windows has no SIGTRAP; and raising an unknown signal there would end up in the
+        // invalid parameter handler of the C runtime instead
+#if defined(SIGTRAP) && !defined(_WIN32)
         std::raise(SIGTRAP);
+#endif
 
         LOG_ABORT;
       }
