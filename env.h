@@ -9,39 +9,76 @@
 #define UTILS_ENV_H_
 
 #include <cstdlib>
+#include <initializer_list>
 #include <optional>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
+#include "utils/logger.h"
 #include "utils/stringutils.h"
 
 namespace utils {
 
 /**
  * Function(s) to handle environment variables
+ *
+ * An instance looks up a variable under one or more prefixes. The first prefix
+ * is the canonical one; any variable found under a later prefix is reported as
+ * deprecated. This allows an application to namespace the variables of a
+ * library it embeds (e.g. SEISSOL_ASYNC_MODE) while keeping the plain names
+ * (ASYNC_MODE) working.
+ *
+ * An instance looks up every variable once, and reports a deprecated one only
+ * then.
  */
 class Env {
   private:
-  std::string prefix;
+  std::vector<std::string> prefixes;
   std::unordered_map<std::string, std::optional<std::string>> cache;
 
-  public:
-  Env(const std::string& prefix) : prefix(prefix) {}
+  auto lookup(const std::string& name) -> const std::optional<std::string>& {
+    const auto cached = cache.find(name);
+    if (cached != cache.end()) {
+      return cached->second;
+    }
 
-  template <typename T>
-  auto getOptional(const std::string& name) -> std::optional<T> {
-    if (cache.find(name) == cache.end()) {
-      char* value = std::getenv((prefix + name).c_str());
-      if (value == nullptr) {
-        cache[name] = std::optional<std::string>();
-      } else {
-        cache[name] = std::make_optional<std::string>(value);
+    std::optional<std::string> found;
+    for (std::size_t i = 0; i < prefixes.size(); ++i) {
+      const char* value = std::getenv((prefixes[i] + name).c_str());
+      if (value != nullptr) {
+        if (i > 0) {
+          logWarning() << "The environment variable" << (prefixes[i] + name) << "is deprecated. Use"
+                       << (prefixes[0] + name) << "instead.";
+        }
+        found = std::make_optional<std::string>(value);
+        break;
       }
     }
 
-    const auto value = cache.at(name);
-    if (cache.at(name).has_value()) {
+    return cache.emplace(name, std::move(found)).first->second;
+  }
+
+  public:
+  Env(const std::string& prefix) : prefixes{prefix} {}
+
+  Env(std::initializer_list<std::string> prefixes) : prefixes(prefixes) {}
+
+  explicit Env(std::vector<std::string> prefixes) : prefixes(std::move(prefixes)) {}
+
+  /**
+   * @return The canonical prefix, i.e. the one that should be used in messages
+   *  directed at the user.
+   */
+  [[nodiscard]] auto prefix() const -> const std::string& { return prefixes.front(); }
+
+  template <typename T>
+  auto getOptional(const std::string& name) -> std::optional<T> {
+    const auto& value = lookup(name);
+
+    if (value.has_value()) {
       return std::make_optional<T>(StringUtils::parse<T>(value.value()));
     } else {
       return std::optional<T>();
