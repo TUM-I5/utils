@@ -9,6 +9,7 @@
 #define UTILS_TESTS_LOGGER_T_H_
 
 #include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <iomanip>
@@ -17,8 +18,10 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -110,6 +113,16 @@ void logAtLevelOne();
 // Defined in logger_noreturn.cpp, which is compiled with -Werror=return-type.
 auto positiveOrFatal(int value) -> int;
 
+template <typename T>
+auto holds(const LogValue& value, const T& expected) -> bool {
+  const auto* held = std::get_if<T>(&value.value);
+  return held != nullptr && *held == expected;
+}
+
+// The record of the one message that function makes, with the console off.
+template <typename F>
+auto recordOf(F&& function) -> LogRecord;
+
 // Keeps what a callback gets, for as long as it exists.
 class Collector {
   public:
@@ -127,6 +140,15 @@ class Collector {
   private:
   int id;
 };
+
+template <typename F>
+auto recordOf(F&& function) -> LogRecord {
+  Logger::enableConsole(false);
+  const Collector collector;
+  std::forward<F>(function)();
+  Logger::enableConsole(true);
+  return collector.records.size() == 1 ? collector.records.front() : LogRecord{};
+}
 
 struct Streamable {
   int value;
@@ -422,6 +444,119 @@ class TestLogger : public CxxTest::TestSuite {
     TS_ASSERT_DIFFERS(handler, std::string::npos);
     TS_ASSERT_LESS_THAN(callback, handler);
 #endif
+  }
+
+  static void testTemplateFromLiterals() {
+    const auto record = logger_test::recordOf(
+        [] { logInfo() << "The mesh has" << 1234 << "cells and" << 567 << "vertices."; });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("The mesh has {} cells and {} vertices."));
+    TS_ASSERT_EQUALS(record.arguments.size(), 2U);
+    TS_ASSERT(logger_test::holds(record.arguments.at(0), std::int64_t{1234}));
+    TS_ASSERT(logger_test::holds(record.arguments.at(1), std::int64_t{567}));
+    TS_ASSERT_EQUALS(record.message(),
+                     std::string_view("The mesh has 1234 cells and 567 vertices."));
+  }
+
+  static void testTemplateValueTypes() {
+    const auto record = logger_test::recordOf([] {
+      logInfo() << "x" << std::string("s") << 2.5 << true << 7U << -3 << ':'
+                << std::vector<int>{1, 2} << std::make_pair(1, "a");
+    });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("x {} {} {} {} {} : {} {}"));
+    TS_ASSERT_EQUALS(record.arguments.size(), 7U);
+    TS_ASSERT(logger_test::holds(record.arguments.at(0), std::string("s")));
+    TS_ASSERT(logger_test::holds(record.arguments.at(1), 2.5));
+    TS_ASSERT(logger_test::holds(record.arguments.at(2), true));
+    TS_ASSERT(logger_test::holds(record.arguments.at(3), std::uint64_t{7}));
+    TS_ASSERT(logger_test::holds(record.arguments.at(4), std::int64_t{-3}));
+    const auto* list = std::get_if<LogValue::List>(&record.arguments.at(5).value);
+    TS_ASSERT(list != nullptr && list->size() == 2 &&
+              logger_test::holds(list->at(1), std::int64_t{2}));
+    const auto* pair = std::get_if<LogValue::List>(&record.arguments.at(6).value);
+    TS_ASSERT(pair != nullptr && pair->size() == 2 &&
+              logger_test::holds(pair->at(1), std::string("a")));
+  }
+
+  static void testDynamicTextIsAValue() {
+    const auto record = logger_test::recordOf([] {
+      const std::string dynamic = "dyn";
+      char changing[] = "buf";
+      logInfo() << "a" << dynamic.c_str() << changing;
+    });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("a {} {}"));
+    TS_ASSERT_EQUALS(record.arguments.size(), 2U);
+    TS_ASSERT(logger_test::holds(record.arguments.at(0), std::string("dyn")));
+    TS_ASSERT(logger_test::holds(record.arguments.at(1), std::string("buf")));
+  }
+
+  static void testBracesOfTheTextAreDoubled() {
+    const auto record = logger_test::recordOf([] { logInfo() << "set {a}" << 1 << '}'; });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("set {{a}} {} }}"));
+  }
+
+  static void testManipulatorsAreNoValues() {
+    const auto record =
+        logger_test::recordOf([] { logInfo() << std::setprecision(3) << 1.23456 << std::endl; });
+    TS_ASSERT_EQUALS(record.text, std::string(" 1.23 \n"));
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string(" {} \n"));
+    TS_ASSERT_EQUALS(record.arguments.size(), 1U);
+    // the value keeps its precision
+    TS_ASSERT(logger_test::holds(record.arguments.at(0), 1.23456));
+  }
+
+  static void testNestedValuesAreOneValue() {
+    const auto record = logger_test::recordOf(
+        [] { logInfo() << std::vector<std::vector<int>>{{1}, {2, 3}} << "end"; });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("{} end"));
+    TS_ASSERT_EQUALS(record.arguments.size(), 1U);
+  }
+
+  static void testStreamableValueAsText() {
+    const auto record = logger_test::recordOf([] { logInfo() << logger_test::Streamable{5}; });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("{}"));
+    TS_ASSERT(logger_test::holds(record.arguments.at(0), std::string("Streamable(5)")));
+  }
+
+  static void testFields() {
+    const auto record = logger_test::recordOf([] {
+      logInfo() << "The mesh has" << utils::field("cells", 1234) << "cells in"
+                << utils::field("file", "mesh.h5");
+    });
+    TS_ASSERT_EQUALS(record.text, std::string("The mesh has 1234 cells in mesh.h5 "));
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("The mesh has {} cells in {}"));
+    TS_ASSERT_EQUALS(record.arguments.size(), 2U);
+    TS_ASSERT_EQUALS(record.fields.size(), 2U);
+    TS_ASSERT_EQUALS(record.fields.at(0).first, std::string("cells"));
+    TS_ASSERT(logger_test::holds(record.fields.at(0).second, std::int64_t{1234}));
+    TS_ASSERT_EQUALS(record.fields.at(1).first, std::string("file"));
+    TS_ASSERT(logger_test::holds(record.fields.at(1).second, std::string("mesh.h5")));
+  }
+
+  static void testContextFields() {
+    Logger::setField("run", std::string("abc"));
+    Logger::setField("attempt", 1);
+    Logger::setField("run", std::string("def"));
+    const auto record = logger_test::recordOf([] { logInfo() << "x"; });
+    TS_ASSERT_EQUALS(record.context.size(), 2U);
+    TS_ASSERT_EQUALS(record.context.at(0).first, std::string("run"));
+    TS_ASSERT(logger_test::holds(record.context.at(0).second, std::string("def")));
+    Logger::removeField("run");
+    Logger::removeField("attempt");
+    const auto after = logger_test::recordOf([] { logInfo() << "x"; });
+    TS_ASSERT(after.context.empty());
+  }
+
+  static void testLocation() {
+    Logger::enableConsole(false);
+    const logger_test::Collector collector;
+    const std::uint32_t line = __LINE__ + 1;
+    logInfo() << "here";
+    Logger::enableConsole(true);
+    TS_ASSERT_EQUALS(collector.records.size(), 1U);
+    const auto& location = collector.records.at(0).location;
+    TS_ASSERT_EQUALS(location.line, line);
+    TS_ASSERT(std::string(location.file).find("logger.t.h") != std::string::npos);
+    TS_ASSERT(std::string(location.function).find("testLocation") != std::string::npos);
   }
 
   static void testFatalErrorAborts() {

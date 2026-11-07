@@ -34,6 +34,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 // backtraces are only available where execinfo.h is (e.g. glibc and macOS, but not Windows)
@@ -57,6 +58,23 @@
 
 #ifdef BACKTRACE_SIZE
 #error "BACKTRACE_SIZE is not used anymore: set the depth with utils::Logger::setBacktraceDepth()"
+#endif
+
+// whether the compiler has builtins that give the place of a call when used as default arguments
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_FILE) && __has_builtin(__builtin_LINE) &&                              \
+    __has_builtin(__builtin_FUNCTION)
+#define UTILS_LOGGER_LOCATION_BUILTINS 1
+#endif
+#elif defined(__GNUC__) && !defined(__clang__) && !defined(__NVCOMPILER) &&                        \
+    !defined(__INTEL_COMPILER)
+#define UTILS_LOGGER_LOCATION_BUILTINS 1
+#elif defined(_MSC_VER) && _MSC_VER >= 1926
+#define UTILS_LOGGER_LOCATION_BUILTINS 1
+#endif
+
+#if !defined(UTILS_LOGGER_LOCATION_BUILTINS) && __has_include(<source_location>)
+#include <source_location>
 #endif
 
 #define UTILS_LOGGER_CONCAT_IMPL(a, b) a##b
@@ -93,6 +111,46 @@ struct LogTime {
   std::int32_t nanoseconds{0};
 };
 
+/** A value of a message, as structured output gets it */
+struct LogValue {
+  using List = std::vector<LogValue>;
+  /** Nothing (std::monostate) for values that have no form here, e.g. a null pointer */
+  std::variant<std::monostate, bool, std::int64_t, std::uint64_t, double, std::string, List> value;
+};
+
+/** A named value of a message */
+using LogNamedValue = std::pair<std::string, LogValue>;
+
+/** Where in the source code a message is made */
+struct LogLocation {
+  const char* file{""};
+  const char* function{""};
+  std::uint32_t line{0};
+
+  /**
+   * The place of the call, when used as a default argument; empty where that cannot be told
+   *
+   * The builtins come first where there are any, so that the function is its plain name both in
+   * C++17 and in C++20.
+   */
+#if defined(UTILS_LOGGER_LOCATION_BUILTINS)
+  static constexpr auto current(const char* fileName = __builtin_FILE(),
+                                const char* functionName = __builtin_FUNCTION(),
+                                std::uint32_t lineNumber = __builtin_LINE()) noexcept
+      -> LogLocation {
+    return {fileName, functionName, lineNumber};
+  }
+#elif defined(__cpp_lib_source_location)
+  static constexpr auto
+      current(std::source_location place = std::source_location::current()) noexcept
+      -> LogLocation {
+    return {place.file_name(), place.function_name(), place.line()};
+  }
+#else
+  static constexpr auto current() noexcept -> LogLocation { return {}; }
+#endif
+};
+
 /** A message, as the logger hands it on */
 struct LogRecord {
   LogLevel level{LogLevel::Info};
@@ -103,7 +161,42 @@ struct LogRecord {
   bool broadcast{false};
   /** The message, as the console shows it after the time stamp, the level and the rank */
   std::string text;
+  /**
+   * The message with each value replaced by {}, and each brace of its text doubled; the same for
+   * all messages of a statement, as long as they put together the same kinds of values
+   */
+  std::string messageTemplate;
+  /** The values, in the order of the {} */
+  std::vector<LogValue> arguments;
+  /** The values named with utils::field() */
+  std::vector<LogNamedValue> fields;
+  /** The fields set with Logger::setField(), the same for all messages */
+  std::vector<LogNamedValue> context;
+  LogLocation location;
+
+  /** The message without the spaces it ends with */
+  [[nodiscard]] auto message() const -> std::string_view {
+    const auto end = text.find_last_not_of(' ');
+    return std::string_view(text).substr(0, end == std::string::npos ? 0 : end + 1);
+  }
 };
+
+/** A value that structured output gets under a name; see field() */
+template <typename T>
+struct LogField {
+  std::string_view name;
+  const T& value;
+};
+
+/**
+ * Names a value of a message for structured output; the console shows the value as usual
+ *
+ * Example: <code>logInfo() << "The mesh has" << utils::field("cells", cells) << "cells.";</code>
+ */
+template <typename T>
+auto field(std::string_view name, const T& value) -> LogField<T> {
+  return {name, value};
+}
 
 /** Whether a fatal error raises SIGTRAP before it ends the program, to stop in a debugger */
 enum class LogTrap {
@@ -163,6 +256,8 @@ struct LoggerState {
   std::shared_ptr<const CallbackList> callbacks{std::make_shared<const CallbackList>()};
   /** Guarded by the mutex */
   int nextCallbackId{1};
+  /** Guarded by the mutex */
+  std::vector<LogNamedValue> context;
 };
 
 inline auto loggerState() -> LoggerState& {
@@ -187,6 +282,69 @@ class DispatchScope {
   auto operator=(const DispatchScope&) -> DispatchScope& = delete;
   auto operator=(DispatchScope&&) -> DispatchScope& = delete;
 };
+
+template <typename T>
+struct IsCharacter : std::bool_constant<std::is_same_v<T, char> || std::is_same_v<T, signed char> ||
+                                        std::is_same_v<T, unsigned char>> {};
+
+template <typename T>
+auto toLogValue(const T& data) -> LogValue;
+
+template <typename T, std::size_t... Idx>
+auto tupleToLogValue(const T& data, std::index_sequence<Idx...> /*indices*/) -> LogValue {
+  LogValue::List list;
+  list.reserve(sizeof...(Idx));
+  (list.push_back(toLogValue(std::get<Idx>(data))), ...);
+  return LogValue{std::move(list)};
+}
+
+/** The value of data for structured output; types are taken in the same order as for the console */
+template <typename T>
+auto toLogValue(const T& data) -> LogValue {
+  using Decayed = std::decay_t<T>;
+  if constexpr (std::is_same_v<T, bool>) {
+    return LogValue{data};
+  } else if constexpr (IsCharacter<T>::value) {
+    return LogValue{std::string(1, static_cast<char>(data))};
+  } else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
+    return LogValue{static_cast<std::int64_t>(data)};
+  } else if constexpr (std::is_integral_v<T>) {
+    return LogValue{static_cast<std::uint64_t>(data)};
+  } else if constexpr (std::is_floating_point_v<T>) {
+    return LogValue{static_cast<double>(data)};
+  } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
+    return LogValue{};
+  } else if constexpr (std::is_same_v<Decayed, const char*> || std::is_same_v<Decayed, char*>) {
+    const char* text = data;
+    return text == nullptr ? LogValue{} : LogValue{std::string(text)};
+  } else if constexpr (std::is_convertible_v<const T&, std::string_view>) {
+    return LogValue{std::string(std::string_view(data))};
+  } else if constexpr (CanOutput<T>::Value) {
+    std::ostringstream stream;
+    stream << data;
+    return LogValue{stream.str()};
+  } else if constexpr (IsIterable<T>::Value) {
+    LogValue::List list;
+    for (const auto& element : data) {
+      list.push_back(toLogValue(element));
+    }
+    return LogValue{std::move(list)};
+  } else if constexpr (IsGettable<T>::Value) {
+    return tupleToLogValue(data, std::make_index_sequence<std::tuple_size_v<T>>{});
+  } else {
+    return LogValue{};
+  }
+}
+
+/** Appends text, with each brace doubled, as a message template has it */
+inline void appendTemplateText(std::string& messageTemplate, std::string_view text) {
+  for (const char character : text) {
+    messageTemplate += character;
+    if (character == '{' || character == '}') {
+      messageTemplate += character;
+    }
+  }
+}
 
 inline auto now() -> LogTime {
   const auto sinceEpoch = std::chrono::system_clock::now().time_since_epoch();
@@ -253,7 +411,7 @@ inline auto wanted(const LogRecord& record) -> bool {
 }
 
 /** Hands a finished message on to where messages go */
-inline void dispatch(const LogRecord& record) noexcept {
+inline void dispatch(LogRecord& record) noexcept {
   try {
     auto& state = loggerState();
     if (dispatching()) {
@@ -265,6 +423,7 @@ inline void dispatch(const LogRecord& record) noexcept {
     }
     const std::lock_guard<std::recursive_mutex> lock(state.mutex);
     const DispatchScope scope;
+    record.context = state.context;
     if (state.console.load(std::memory_order_relaxed) && shownOnConsole(record)) {
       writeToConsole(record);
     }
@@ -399,6 +558,7 @@ class LogMessage {
   auto space() -> LogMessage& {
     spacing = true;
     buffer << ' ';
+    templateText(" ");
     return *this;
   }
   /**
@@ -414,49 +574,60 @@ class LogMessage {
   auto maybeSpace() -> LogMessage& {
     if (spacing) {
       buffer << ' ';
+      templateText(" ");
     }
     return *this;
   }
 
   /**
-   * Default function to add messages
+   * Default function to add messages; the message template gets {} for the value
    */
   template <typename T>
   auto operator<<(const T& data) -> LogMessage& {
     if (!active) {
       return *this;
     }
-    if constexpr (std::is_invocable_r_v<LogMessage&, T, LogMessage&>) {
-      return std::invoke(data, *this);
-    } else if constexpr (std::is_same_v<T, std::string>) {
-      buffer << '"' << data << '"';
-      return maybeSpace();
-    } else if constexpr (CanOutput<T>::Value) {
-      buffer << data;
-      return maybeSpace();
-    } else if constexpr (IsIterable<T>::Value) {
-      nospace() << '[';
-      auto it = std::begin(data);
-      if (it != std::end(data)) {
-        *this << *it;
-        ++it;
-      }
-      for (; it != std::end(data); ++it) {
-        *this << ", " << *it;
-      }
-      *this << ']';
+    return appendValue(data);
+  }
 
-      return space();
-    } else if constexpr (IsGettable<T>::Value) {
-      nospace() << '{';
-      printTuple<T, 0>(*this, data);
-      *this << '}';
-
-      return space();
-    } else {
-      // https://stackoverflow.com/questions/38304847/how-does-a-failed-static-assert-work-in-an-if-constexpr-false-block#comment119622305_64354296
-      static_assert(sizeof(T) == 0, "Output for the given type not implemented.");
+  /**
+   * A string literal (or another constant char array), which is text of the message template
+   */
+  template <std::size_t N>
+  auto operator<<(const char (&text)[N]) -> LogMessage& {
+    if (!active) {
+      return *this;
     }
+    const std::string_view view(text);
+    buffer << view;
+    templateText(view);
+    return maybeSpace();
+  }
+
+  /**
+   * A char array that can change, which is a value
+   */
+  template <std::size_t N>
+  auto operator<<(char (&text)[N]) -> LogMessage& {
+    if (!active) {
+      return *this;
+    }
+    return appendValue(text);
+  }
+
+  /**
+   * A named value; the console shows the value as usual
+   */
+  template <typename T>
+  auto operator<<(const LogField<T>& named) -> LogMessage& {
+    if (!active) {
+      return *this;
+    }
+    appendValue(named.value);
+    if (nesting == 0) {
+      record.fields.emplace_back(std::string(named.name), detail::toLogValue(named.value));
+    }
+    return *this;
   }
 
   /**
@@ -464,7 +635,11 @@ class LogMessage {
    */
   auto operator<<(std::ostream& (*func)(std::ostream&)) -> LogMessage& {
     if (active) {
+      const auto before = buffer.tellp();
       buffer << func;
+      if (nesting == 0 && buffer.tellp() != before) {
+        templateText(buffer.str().substr(static_cast<std::size_t>(before)));
+      }
     }
     return *this; // No space in this case
   }
@@ -475,9 +650,10 @@ class LogMessage {
    *
    * @param level How severe the message is
    * @param broadcast Whether every rank shows the message, and not only the display rank
+   * @param location Where in the source code the message is made
    */
-  LogMessage(LogLevel level, bool broadcast)
-      : record(startRecord(level, broadcast)), active(detail::wanted(record)) {}
+  LogMessage(LogLevel level, bool broadcast, const LogLocation& location)
+      : record(startRecord(level, broadcast, location)), active(detail::wanted(record)) {}
 
   ~LogMessage() = default;
 
@@ -486,6 +662,8 @@ class LogMessage {
     if (active) {
       try {
         record.text = buffer.str();
+        const auto end = record.messageTemplate.find_last_not_of(' ');
+        record.messageTemplate.resize(end == std::string::npos ? 0 : end + 1);
       } catch (...) {
         return;
       }
@@ -499,13 +677,100 @@ class LogMessage {
   [[nodiscard]] auto finishedRecord() const -> const LogRecord& { return record; }
 
   private:
-  static auto startRecord(LogLevel level, bool broadcast) -> LogRecord {
+  /** Keeps the message template from parts of a value for as long as it exists */
+  class Nesting {
+public:
+    explicit Nesting(LogMessage& outer) : owner(outer) { ++owner.nesting; }
+    ~Nesting() { --owner.nesting; }
+    Nesting(const Nesting&) = delete;
+    Nesting(Nesting&&) = delete;
+    auto operator=(const Nesting&) -> Nesting& = delete;
+    auto operator=(Nesting&&) -> Nesting& = delete;
+
+private:
+    LogMessage& owner;
+  };
+
+  static auto startRecord(LogLevel level, bool broadcast, const LogLocation& location)
+      -> LogRecord {
     LogRecord record;
     record.level = level;
     record.broadcast = broadcast;
     record.rank = detail::loggerState().rank.load(std::memory_order_relaxed);
     record.time = detail::now();
+    record.location = location;
     return record;
+  }
+
+  void templateText(std::string_view text) {
+    if (nesting == 0) {
+      detail::appendTemplateText(record.messageTemplate, text);
+    }
+  }
+
+  void templateValue(LogValue value) {
+    if (nesting == 0) {
+      record.messageTemplate += "{}";
+      record.arguments.push_back(std::move(value));
+    }
+  }
+
+  template <typename T>
+  auto appendValue(const T& data) -> LogMessage& {
+    if constexpr (std::is_invocable_r_v<LogMessage&, T, LogMessage&>) {
+      return std::invoke(data, *this);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+      buffer << '"' << data << '"';
+      templateValue(detail::toLogValue(data));
+      return maybeSpace();
+    } else if constexpr (detail::IsCharacter<T>::value) {
+      // characters are mostly punctuation; they are text of the message template
+      buffer << data;
+      const char character = static_cast<char>(data);
+      templateText(std::string_view(&character, 1));
+      return maybeSpace();
+    } else if constexpr (CanOutput<T>::Value) {
+      const auto before = buffer.tellp();
+      buffer << data;
+      // what puts out nothing, like std::setprecision(), is no value
+      if (buffer.tellp() != before) {
+        if constexpr (std::is_arithmetic_v<T> || std::is_pointer_v<std::decay_t<T>> ||
+                      std::is_convertible_v<const T&, std::string_view>) {
+          templateValue(detail::toLogValue(data));
+        } else {
+          templateValue(LogValue{buffer.str().substr(static_cast<std::size_t>(before))});
+        }
+      }
+      return maybeSpace();
+    } else if constexpr (IsIterable<T>::Value) {
+      {
+        const Nesting nested(*this);
+        nospace() << '[';
+        auto it = std::begin(data);
+        if (it != std::end(data)) {
+          *this << *it;
+          ++it;
+        }
+        for (; it != std::end(data); ++it) {
+          *this << ", " << *it;
+        }
+        *this << ']';
+      }
+      templateValue(detail::toLogValue(data));
+      return space();
+    } else if constexpr (IsGettable<T>::Value) {
+      {
+        const Nesting nested(*this);
+        nospace() << '{';
+        printTuple<T, 0>(*this, data);
+        *this << '}';
+      }
+      templateValue(detail::toLogValue(data));
+      return space();
+    } else {
+      // https://stackoverflow.com/questions/38304847/how-does-a-failed-static-assert-work-in-an-if-constexpr-false-block#comment119622305_64354296
+      static_assert(sizeof(T) == 0, "Output for the given type not implemented.");
+    }
   }
 
   template <typename T, std::size_t Idx>
@@ -526,6 +791,8 @@ class LogMessage {
   bool spacing{true};
   /** Whether the message goes anywhere; if not, it is not put together at all */
   bool active{true};
+  /** How deep within a value the message is being put together */
+  int nesting{0};
 };
 
 /**
@@ -536,7 +803,8 @@ class LogMessage {
  */
 class Logger : public LogMessage {
   public:
-  Logger(LogLevel level, bool broadcast) : LogMessage(level, broadcast) {}
+  Logger(LogLevel level, bool broadcast, const LogLocation& location = LogLocation())
+      : LogMessage(level, broadcast, location) {}
 
   Logger(const Logger&) = delete;
   Logger(Logger&&) = delete;
@@ -588,6 +856,36 @@ class Logger : public LogMessage {
 
   using Callback = LogCallback;
 
+  /**
+   * Sets a field that all later messages carry, e.g. the id of the run, replacing one of the same
+   * name
+   */
+  template <typename T>
+  static void setField(const std::string& name, const T& value) {
+    auto converted = detail::toLogValue(value);
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    for (auto& entry : state.context) {
+      if (entry.first == name) {
+        entry.second = std::move(converted);
+        return;
+      }
+    }
+    state.context.emplace_back(name, std::move(converted));
+  }
+
+  /** Removes the field set with setField() under name; nothing happens if there is none */
+  static void removeField(const std::string& name) {
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    for (auto it = state.context.begin(); it != state.context.end(); ++it) {
+      if (it->first == name) {
+        state.context.erase(it);
+        return;
+      }
+    }
+  }
+
   /** Sets whether messages go to the console, e.g. not when another framework shows them */
   static void enableConsole(bool enable) {
     detail::loggerState().console.store(enable, std::memory_order_relaxed);
@@ -634,7 +932,8 @@ class Logger : public LogMessage {
  */
 class FatalLogger : public LogMessage {
   public:
-  explicit FatalLogger(bool broadcast) : LogMessage(LogLevel::Error, broadcast) {}
+  explicit FatalLogger(bool broadcast, const LogLocation& location = LogLocation())
+      : LogMessage(LogLevel::Error, broadcast, location) {}
 
   FatalLogger(const FatalLogger&) = delete;
   FatalLogger(FatalLogger&&) = delete;
@@ -725,12 +1024,14 @@ constexpr auto compiledFrom(utils::LogLevel level) -> int {
 
 /** A message of Level, or a dummy where LOG_LEVEL leaves out messages of Level */
 template <utils::LogLevel Level>
-auto logAt(bool broadcast) {
+auto logAt(bool broadcast, const utils::LogLocation& location) {
   if constexpr (Level == utils::LogLevel::Error) {
-    return utils::FatalLogger(broadcast);
+    return utils::FatalLogger(broadcast, location);
   } else if constexpr (LOG_LEVEL >= compiledFrom(Level)) {
-    return utils::Logger(Level, broadcast);
+    return utils::Logger(Level, broadcast, location);
   } else {
+    static_cast<void>(broadcast);
+    static_cast<void>(location);
     return utils::NoLogger();
   }
 }
@@ -742,8 +1043,9 @@ auto logAt(bool broadcast) {
  *
  * @relates utils::FatalLogger
  */
-inline auto logFatal(bool broadcast = true) {
-  return utils_logger_detail::logAt<utils::LogLevel::Error>(broadcast);
+inline auto logFatal(bool broadcast = true,
+                     utils::LogLocation location = utils::LogLocation::current()) {
+  return utils_logger_detail::logAt<utils::LogLevel::Error>(broadcast, location);
 }
 
 /**
@@ -751,8 +1053,9 @@ inline auto logFatal(bool broadcast = true) {
  *
  * @relates utils::FatalLogger
  */
-inline auto logError(bool broadcast = true) {
-  return utils_logger_detail::logAt<utils::LogLevel::Error>(broadcast);
+inline auto logError(bool broadcast = true,
+                     utils::LogLocation location = utils::LogLocation::current()) {
+  return utils_logger_detail::logAt<utils::LogLevel::Error>(broadcast, location);
 }
 
 /**
@@ -760,8 +1063,9 @@ inline auto logError(bool broadcast = true) {
  *
  * @relates utils::Logger
  */
-inline auto logWarning(bool broadcast = false) {
-  return utils_logger_detail::logAt<utils::LogLevel::Warning>(broadcast);
+inline auto logWarning(bool broadcast = false,
+                       utils::LogLocation location = utils::LogLocation::current()) {
+  return utils_logger_detail::logAt<utils::LogLevel::Warning>(broadcast, location);
 }
 
 /**
@@ -769,8 +1073,9 @@ inline auto logWarning(bool broadcast = false) {
  *
  * @relates utils::Logger
  */
-inline auto logInfo(bool broadcast = false) {
-  return utils_logger_detail::logAt<utils::LogLevel::Info>(broadcast);
+inline auto logInfo(bool broadcast = false,
+                    utils::LogLocation location = utils::LogLocation::current()) {
+  return utils_logger_detail::logAt<utils::LogLevel::Info>(broadcast, location);
 }
 
 /**
@@ -778,8 +1083,9 @@ inline auto logInfo(bool broadcast = false) {
  *
  * @relates utils::Logger
  */
-inline auto logDebug(bool broadcast = false) {
-  return utils_logger_detail::logAt<utils::LogLevel::Debug>(broadcast);
+inline auto logDebug(bool broadcast = false,
+                     utils::LogLocation location = utils::LogLocation::current()) {
+  return utils_logger_detail::logAt<utils::LogLevel::Debug>(broadcast, location);
 }
 
 } // namespace UTILS_LOGGER_LEVEL_NAMESPACE
