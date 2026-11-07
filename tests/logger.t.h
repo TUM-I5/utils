@@ -22,8 +22,8 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -117,8 +117,17 @@ auto positiveOrFatal(int value) -> int;
 
 template <typename T>
 auto holds(const LogValue& value, const T& expected) -> bool {
-  const auto* held = std::get_if<T>(&value.value);
-  return held != nullptr && *held == expected;
+  if constexpr (std::is_same_v<T, bool>) {
+    return value.kind == LogValue::Kind::Boolean && value.boolean == expected;
+  } else if constexpr (std::is_same_v<T, std::int64_t>) {
+    return value.kind == LogValue::Kind::Signed && value.signedInteger == expected;
+  } else if constexpr (std::is_same_v<T, std::uint64_t>) {
+    return value.kind == LogValue::Kind::Unsigned && value.unsignedInteger == expected;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return value.kind == LogValue::Kind::Floating && value.floating == expected;
+  } else {
+    return value.kind == LogValue::Kind::String && value.string == expected;
+  }
 }
 
 // The record of the one message that function makes, with the console off.
@@ -504,12 +513,12 @@ class TestLogger : public CxxTest::TestSuite {
     TS_ASSERT(logger_test::holds(record.arguments.at(2), true));
     TS_ASSERT(logger_test::holds(record.arguments.at(3), std::uint64_t{7}));
     TS_ASSERT(logger_test::holds(record.arguments.at(4), std::int64_t{-3}));
-    const auto* list = std::get_if<LogValue::List>(&record.arguments.at(5).value);
-    TS_ASSERT(list != nullptr && list->size() == 2 &&
-              logger_test::holds(list->at(1), std::int64_t{2}));
-    const auto* pair = std::get_if<LogValue::List>(&record.arguments.at(6).value);
-    TS_ASSERT(pair != nullptr && pair->size() == 2 &&
-              logger_test::holds(pair->at(1), std::string("a")));
+    const auto& list = record.arguments.at(5);
+    TS_ASSERT(list.kind == LogValue::Kind::List && list.list.size() == 2 &&
+              logger_test::holds(list.list.at(1), std::int64_t{2}));
+    const auto& pair = record.arguments.at(6);
+    TS_ASSERT(pair.kind == LogValue::Kind::List && pair.list.size() == 2 &&
+              logger_test::holds(pair.list.at(1), std::string("a")));
   }
 
   static void testDynamicTextIsAValue() {
@@ -572,13 +581,13 @@ class TestLogger : public CxxTest::TestSuite {
     Logger::setField("attempt", 1);
     Logger::setField("run", std::string("def"));
     const auto record = logger_test::recordOf([] { logInfo() << "x"; });
-    TS_ASSERT_EQUALS(record.context.size(), 2U);
-    TS_ASSERT_EQUALS(record.context.at(0).first, std::string("run"));
-    TS_ASSERT(logger_test::holds(record.context.at(0).second, std::string("def")));
+    TS_ASSERT_EQUALS(record.context->size(), 2U);
+    TS_ASSERT_EQUALS(record.context->at(0).first, std::string("run"));
+    TS_ASSERT(logger_test::holds(record.context->at(0).second, std::string("def")));
     Logger::removeField("run");
     Logger::removeField("attempt");
     const auto after = logger_test::recordOf([] { logInfo() << "x"; });
-    TS_ASSERT(after.context.empty());
+    TS_ASSERT(after.context->empty());
   }
 
   static void testLocation() {
@@ -718,7 +727,7 @@ class TestLogger : public CxxTest::TestSuite {
         std::string(" warn 0 : The field \"message\" is not set: the JSON lines have a key of that "
                     "name. \n"));
     const auto record = logger_test::recordOf([] { logInfo() << "x"; });
-    TS_ASSERT(record.context.empty());
+    TS_ASSERT(record.context->empty());
   }
 
   static void testFatalErrorAborts() {

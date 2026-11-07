@@ -9,13 +9,11 @@
 #define UTILS_LOGGER_H_
 
 #include "utils/common.h"
-#include "utils/stringutils.h"
-#include "utils/timeutils.h"
+#include "utils/stringutils.h" // IWYU pragma: export
+#include "utils/timeutils.h"   // IWYU pragma: export
 
 #include <array>
 #include <atomic>
-#include <chrono>
-#include <cmath>
 #include <csignal>
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +24,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <locale>
 #include <memory>
 #include <mutex>
@@ -37,7 +36,6 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include <variant>
 #include <vector>
 
 // backtraces are only available where execinfo.h is (e.g. glibc and macOS, but not Windows)
@@ -80,6 +78,13 @@
 #include <source_location>
 #endif
 
+// logging is rarely on the hot path: the compiler optimizes it for size, and keeps it out of the
+// way of the code around it
+#if defined(__GNUC__) || defined(__clang__)
+#define UTILS_LOGGER_COLD [[gnu::cold]]
+#else
+#define UTILS_LOGGER_COLD
+#endif
 #define UTILS_LOGGER_CONCAT_IMPL(a, b) a##b
 #define UTILS_LOGGER_CONCAT(a, b) UTILS_LOGGER_CONCAT_IMPL(a, b)
 #define UTILS_LOGGER_LEVEL_NAMESPACE UTILS_LOGGER_CONCAT(utils_logger_v3_level, LOG_LEVEL)
@@ -117,8 +122,26 @@ struct LogTime {
 /** A value of a message, as structured output gets it */
 struct LogValue {
   using List = std::vector<LogValue>;
-  /** Nothing (std::monostate) for values that have no form here, e.g. a null pointer */
-  std::variant<std::monostate, bool, std::int64_t, std::uint64_t, double, std::string, List> value;
+
+  /** Which of the members holds the value; Null for values that have no form here */
+  enum class Kind { Null, Boolean, Signed, Unsigned, Floating, String, List };
+
+  // (a plain struct rather than a std::variant, which takes long to compile in every user)
+  Kind kind{Kind::Null};
+  bool boolean{false};
+  std::int64_t signedInteger{0};
+  std::uint64_t unsignedInteger{0};
+  double floating{0};
+  std::string string;
+  List list;
+
+  LogValue() = default;
+  explicit LogValue(bool value) : kind(Kind::Boolean), boolean(value) {}
+  explicit LogValue(std::int64_t value) : kind(Kind::Signed), signedInteger(value) {}
+  explicit LogValue(std::uint64_t value) : kind(Kind::Unsigned), unsignedInteger(value) {}
+  explicit LogValue(double value) : kind(Kind::Floating), floating(value) {}
+  explicit LogValue(std::string value) : kind(Kind::String), string(std::move(value)) {}
+  explicit LogValue(List value) : kind(Kind::List), list(std::move(value)) {}
 };
 
 /** A named value of a message */
@@ -173,8 +196,11 @@ struct LogRecord {
   std::vector<LogValue> arguments;
   /** The values named with utils::field() */
   std::vector<LogNamedValue> fields;
-  /** The fields set with Logger::setField(), the same for all messages */
-  std::vector<LogNamedValue> context;
+  /**
+   * The fields set with Logger::setField() when the message was handed on; shared between
+   * messages, and never null once the message is handed on
+   */
+  std::shared_ptr<const std::vector<LogNamedValue>> context;
   LogLocation location;
 
   /** The message without the spaces it ends with */
@@ -259,12 +285,18 @@ struct LoggerState {
   std::shared_ptr<const CallbackList> callbacks{std::make_shared<const CallbackList>()};
   /** Guarded by the mutex */
   int nextCallbackId{1};
-  /** Guarded by the mutex */
-  std::vector<LogNamedValue> context;
+  /** Guarded by the mutex; replaced rather than changed, as messages share it */
+  std::shared_ptr<const std::vector<LogNamedValue>> context{
+      std::make_shared<const std::vector<LogNamedValue>>()};
   /** Whether a JSON Lines file is open */
   std::atomic<bool> jsonLines{false};
   /** Guarded by the mutex */
   std::FILE* jsonFile{nullptr};
+  /**
+   * Guarded by the mutex: writes a record to jsonFile. A pointer, which enableJsonLines() sets, so
+   * that the code writing JSON is only compiled where a program opens a JSON Lines file.
+   */
+  void (*jsonWriter)(LoggerState&, const LogRecord&){nullptr};
   /** Guarded by the mutex: the first messages, kept until a JSON Lines file is opened */
   std::vector<LogRecord> earlyRecords;
   /** Guarded by the mutex: how many messages earlyRecords keeps at most */
@@ -306,40 +338,40 @@ auto tupleToLogValue(const T& data, std::index_sequence<Idx...> /*indices*/) -> 
   LogValue::List list;
   list.reserve(sizeof...(Idx));
   (list.push_back(toLogValue(std::get<Idx>(data))), ...);
-  return LogValue{std::move(list)};
+  return LogValue(std::move(list));
 }
 
 /** The value of data for structured output; types are taken in the same order as for the console */
 template <typename T>
-auto toLogValue(const T& data) -> LogValue {
+UTILS_LOGGER_COLD auto toLogValue(const T& data) -> LogValue {
   using Decayed = std::decay_t<T>;
   if constexpr (std::is_same_v<T, bool>) {
-    return LogValue{data};
+    return LogValue(data);
   } else if constexpr (IsCharacter<T>::value) {
-    return LogValue{std::string(1, static_cast<char>(data))};
+    return LogValue(std::string(1, static_cast<char>(data)));
   } else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
-    return LogValue{static_cast<std::int64_t>(data)};
+    return LogValue(static_cast<std::int64_t>(data));
   } else if constexpr (std::is_integral_v<T>) {
-    return LogValue{static_cast<std::uint64_t>(data)};
+    return LogValue(static_cast<std::uint64_t>(data));
   } else if constexpr (std::is_floating_point_v<T>) {
-    return LogValue{static_cast<double>(data)};
+    return LogValue(static_cast<double>(data));
   } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
     return LogValue{};
   } else if constexpr (std::is_same_v<Decayed, const char*> || std::is_same_v<Decayed, char*>) {
     const char* text = data;
-    return text == nullptr ? LogValue{} : LogValue{std::string(text)};
+    return text == nullptr ? LogValue() : LogValue(std::string(text));
   } else if constexpr (std::is_convertible_v<const T&, std::string_view>) {
-    return LogValue{std::string(std::string_view(data))};
+    return LogValue(std::string(std::string_view(data)));
   } else if constexpr (CanOutput<T>::Value) {
     std::ostringstream stream;
     stream << data;
-    return LogValue{stream.str()};
+    return LogValue(stream.str());
   } else if constexpr (IsIterable<T>::Value) {
     LogValue::List list;
     for (const auto& element : data) {
       list.push_back(toLogValue(element));
     }
-    return LogValue{std::move(list)};
+    return LogValue(std::move(list));
   } else if constexpr (IsGettable<T>::Value) {
     return tupleToLogValue(data, std::make_index_sequence<std::tuple_size_v<T>>{});
   } else {
@@ -348,7 +380,8 @@ auto toLogValue(const T& data) -> LogValue {
 }
 
 /** Appends text, with each brace doubled, as a message template has it */
-inline void appendTemplateText(std::string& messageTemplate, std::string_view text) {
+UTILS_LOGGER_COLD inline void appendTemplateText(std::string& messageTemplate,
+                                                 std::string_view text) {
   for (const char character : text) {
     messageTemplate += character;
     if (character == '{' || character == '}') {
@@ -358,12 +391,48 @@ inline void appendTemplateText(std::string& messageTemplate, std::string_view te
 }
 
 inline auto now() -> LogTime {
-  const auto sinceEpoch = std::chrono::system_clock::now().time_since_epoch();
-  const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(sinceEpoch);
-  const auto nanoseconds =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(sinceEpoch - seconds);
-  return {static_cast<std::int64_t>(seconds.count()),
-          static_cast<std::int32_t>(nanoseconds.count())};
+  // (not through <chrono>, which takes long to compile in C++20, since it brings in <format>)
+  std::timespec time{};
+  if (std::timespec_get(&time, TIME_UTC) == 0) {
+    return {};
+  }
+  return {static_cast<std::int64_t>(time.tv_sec), static_cast<std::int32_t>(time.tv_nsec)};
+}
+
+/** The calendar time of seconds since the epoch, as local time or in UTC */
+inline auto calendarTime(std::int64_t seconds, bool local) -> std::tm {
+  const auto time = static_cast<std::time_t>(seconds);
+  std::tm calendar{};
+#ifdef _WIN32
+  if (local) {
+    localtime_s(&calendar, &time);
+  } else {
+    gmtime_s(&calendar, &time);
+  }
+#else
+  if (local) {
+    localtime_r(&time, &calendar);
+  } else {
+    gmtime_r(&time, &calendar);
+  }
+#endif
+  return calendar;
+}
+
+/** Formats a calendar time with strftime() */
+inline auto formatTime(const char* format, const std::tm& calendar) -> std::string {
+  std::array<char, 64> text{};
+  const auto length = std::strftime(text.data(), text.size(), format, &calendar);
+  return std::string(text.data(), length);
+}
+
+/** The number with at least digits digits, padded with zeros */
+inline auto zeroPadded(std::int64_t number, std::size_t digits) -> std::string {
+  auto text = std::to_string(number);
+  if (text.size() < digits) {
+    text.insert(0, digits - text.size(), '0');
+  }
+  return text;
 }
 
 inline auto levelName(LogLevel level) -> const char* {
@@ -387,24 +456,23 @@ inline auto shownOnConsole(const LogRecord& record) -> bool {
          state.logAll.load(std::memory_order_relaxed) || record.broadcast;
 }
 
-inline void writeToConsole(const LogRecord& record) {
+UTILS_LOGGER_COLD inline void writeToConsole(const LogRecord& record) {
+  std::ostringstream line;
   // (spelled out, since not every C runtime understands %F or %T; e.g. msvcrt.dll does not)
-  std::string line =
-      TimeUtils::timeAsString("%Y-%m-%d %H:%M:%S", static_cast<time_t>(record.time.seconds));
-  line += ".";
-  line += StringUtils::padLeft(std::to_string(record.time.nanoseconds / 1000000), 3, '0');
-  line += " ";
-  line += levelName(record.level);
-  line += " ";
-  line += record.rank >= 0 ? std::to_string(record.rank) : std::string("-");
-  line += " : ";
-  line += record.text;
-  line += '\n';
-
-  if (record.level == LogLevel::Info || record.level == LogLevel::Debug) {
-    std::cout << line;
+  line << formatTime("%Y-%m-%d %H:%M:%S", calendarTime(record.time.seconds, true)) << '.'
+       << zeroPadded(record.time.nanoseconds / 1000000, 3) << ' ' << levelName(record.level) << ' ';
+  if (record.rank >= 0) {
+    line << record.rank;
   } else {
-    std::cerr << line;
+    line << '-';
+  }
+  line << " : " << record.text << '\n';
+
+  // written as one piece, so that lines of different threads do not mix
+  if (record.level == LogLevel::Info || record.level == LogLevel::Debug) {
+    std::cout << line.str();
+  } else {
+    std::cerr << line.str();
   }
 }
 
@@ -465,12 +533,17 @@ inline auto parseNumber(const std::string& text) -> double {
 
 /** The shorter of 15 and 17 significant digits that gives the value back */
 inline void appendJsonNumber(std::string& json, double value) {
-  if (std::isnan(value)) {
+  // (compared directly rather than through <cmath>, to keep the header light)
+  if (value != value) {
     json += R"("NaN")";
     return;
   }
-  if (std::isinf(value)) {
-    json += value > 0 ? R"("Infinity")" : R"("-Infinity")";
+  if (value == std::numeric_limits<double>::infinity()) {
+    json += R"("Infinity")";
+    return;
+  }
+  if (value == -std::numeric_limits<double>::infinity()) {
+    json += R"("-Infinity")";
     return;
   }
   auto text = formatNumber(value, 15);
@@ -481,32 +554,36 @@ inline void appendJsonNumber(std::string& json, double value) {
 }
 
 inline void appendJsonValue(std::string& json, const LogValue& value) {
-  std::visit(
-      [&json](const auto& held) {
-        using Held = std::decay_t<decltype(held)>;
-        if constexpr (std::is_same_v<Held, std::monostate>) {
-          json += "null";
-        } else if constexpr (std::is_same_v<Held, bool>) {
-          json += held ? "true" : "false";
-        } else if constexpr (std::is_same_v<Held, std::int64_t> ||
-                             std::is_same_v<Held, std::uint64_t>) {
-          json += std::to_string(held);
-        } else if constexpr (std::is_same_v<Held, double>) {
-          appendJsonNumber(json, held);
-        } else if constexpr (std::is_same_v<Held, std::string>) {
-          appendJsonString(json, held);
-        } else {
-          json += '[';
-          for (std::size_t i = 0; i < held.size(); ++i) {
-            if (i > 0) {
-              json += ',';
-            }
-            appendJsonValue(json, held[i]);
-          }
-          json += ']';
-        }
-      },
-      value.value);
+  switch (value.kind) {
+  case LogValue::Kind::Null:
+    json += "null";
+    break;
+  case LogValue::Kind::Boolean:
+    json += value.boolean ? "true" : "false";
+    break;
+  case LogValue::Kind::Signed:
+    json += std::to_string(value.signedInteger);
+    break;
+  case LogValue::Kind::Unsigned:
+    json += std::to_string(value.unsignedInteger);
+    break;
+  case LogValue::Kind::Floating:
+    appendJsonNumber(json, value.floating);
+    break;
+  case LogValue::Kind::String:
+    appendJsonString(json, value.string);
+    break;
+  case LogValue::Kind::List:
+    json += '[';
+    for (std::size_t i = 0; i < value.list.size(); ++i) {
+      if (i > 0) {
+        json += ',';
+      }
+      appendJsonValue(json, value.list[i]);
+    }
+    json += ']';
+    break;
+  }
 }
 
 inline auto jsonLevelName(LogLevel level) -> const char* {
@@ -515,18 +592,8 @@ inline auto jsonLevelName(LogLevel level) -> const char* {
 
 /** The time as ISO 8601 in UTC, to the microsecond */
 inline auto jsonTime(const LogTime& time) -> std::string {
-  const auto seconds = static_cast<time_t>(time.seconds);
-  std::tm utc{};
-#ifdef _WIN32
-  gmtime_s(&utc, &seconds);
-#else
-  gmtime_r(&seconds, &utc);
-#endif
-  std::array<char, 32> date{};
-  const auto length = std::strftime(date.data(), date.size(), "%Y-%m-%dT%H:%M:%S", &utc);
-  const auto microseconds = std::to_string(time.nanoseconds / 1000);
-  return std::string(date.data(), length) + "." + std::string(6 - microseconds.size(), '0') +
-         microseconds + "Z";
+  return formatTime("%Y-%m-%dT%H:%M:%S", calendarTime(time.seconds, false)) + "." +
+         zeroPadded(time.nanoseconds / 1000, 6) + "Z";
 }
 
 /** A record as one line of JSON; rank is the rank to write for a record made before it was known */
@@ -538,11 +605,13 @@ inline auto jsonLine(const LogRecord& record, int rank) -> std::string {
   json += ",\"rank\":";
   const int recordRank = record.rank >= 0 ? record.rank : rank;
   json += recordRank >= 0 ? std::to_string(recordRank) : std::string("null");
-  for (const auto& [name, value] : record.context) {
-    json += ',';
-    appendJsonString(json, name);
-    json += ':';
-    appendJsonValue(json, value);
+  if (record.context != nullptr) {
+    for (const auto& [name, value] : *record.context) {
+      json += ',';
+      appendJsonString(json, name);
+      json += ':';
+      appendJsonValue(json, value);
+    }
   }
   json += ",\"message\":";
   appendJsonString(json, record.message());
@@ -591,7 +660,7 @@ inline void writeJsonLine(LoggerState& state, const LogRecord& record) {
 }
 
 /** Whether a message goes anywhere at all; if not, it need not be put together */
-inline auto wanted(const LogRecord& record) -> bool {
+UTILS_LOGGER_COLD inline auto wanted(const LogRecord& record) -> bool {
   const auto& state = loggerState();
   if (record.level == LogLevel::Error) {
     return true;
@@ -605,7 +674,7 @@ inline auto wanted(const LogRecord& record) -> bool {
 }
 
 /** Hands a finished message on to where messages go */
-inline void dispatch(LogRecord& record) noexcept {
+UTILS_LOGGER_COLD inline void dispatch(LogRecord& record) noexcept {
   try {
     auto& state = loggerState();
     if (dispatching()) {
@@ -621,12 +690,9 @@ inline void dispatch(LogRecord& record) noexcept {
     if (state.console.load(std::memory_order_relaxed) && shownOnConsole(record)) {
       writeToConsole(record);
     }
-    if (forJsonLines(record)) {
-      if (state.jsonFile != nullptr) {
-        writeJsonLine(state, record);
-      } else if (state.earlyRecords.size() < state.earlyLimit) {
-        state.earlyRecords.push_back(record);
-      }
+    const bool json = forJsonLines(record);
+    if (json && state.jsonFile != nullptr && state.jsonWriter != nullptr) {
+      state.jsonWriter(state, record);
     }
     const auto callbacks = state.callbacks;
     for (const auto& entry : *callbacks) {
@@ -638,13 +704,19 @@ inline void dispatch(LogRecord& record) noexcept {
         }
       }
     }
+    // last, and moved: the record is not used after it is handed on, except for a fatal error,
+    // which needs no keeping, as the program ends
+    if (json && state.jsonFile == nullptr && state.earlyRecords.size() < state.earlyLimit &&
+        record.level != LogLevel::Error) {
+      state.earlyRecords.push_back(std::move(record));
+    }
   } catch (...) {
     // a message that cannot be handed on is lost; the program goes on
   }
 }
 
 /** Whether a debugger is attached to the process; false where that cannot be told */
-inline auto debuggerAttached() -> bool {
+UTILS_LOGGER_COLD inline auto debuggerAttached() -> bool {
 #ifdef __linux__
   std::FILE* status = std::fopen("/proc/self/status", "r");
   if (status == nullptr) {
@@ -666,7 +738,7 @@ inline auto debuggerAttached() -> bool {
 #endif
 }
 
-inline void writeBacktrace(int depth) {
+UTILS_LOGGER_COLD inline void writeBacktrace(int depth) {
 #ifdef UTILS_LOGGER_HAS_BACKTRACE
   if (depth <= 0) {
     return;
@@ -701,7 +773,7 @@ inline auto aborting() -> bool& {
  * In order: the output is flushed, the backtrace written, SIGTRAP raised if set so, and the abort
  * handler called; if there is none, or it returns, std::abort() ends the program.
  */
-[[noreturn]] inline void endProgram(const LogRecord& record) noexcept {
+[[noreturn]] UTILS_LOGGER_COLD inline void endProgram(const LogRecord& record) noexcept {
   auto& state = loggerState();
   if (!aborting()) {
     aborting() = true;
@@ -796,13 +868,8 @@ class LogMessage {
    */
   template <std::size_t N>
   auto operator<<(const char (&text)[N]) -> LogMessage& {
-    if (!active) {
-      return *this;
-    }
-    const std::string_view view(text);
-    buffer << view;
-    templateText(view);
-    return maybeSpace();
+    // (the same code for every length)
+    return appendLiteral(text);
   }
 
   /**
@@ -859,7 +926,7 @@ class LogMessage {
   ~LogMessage() = default;
 
   /** Hands the message on, if it goes anywhere */
-  void finish() noexcept {
+  UTILS_LOGGER_COLD void finish() noexcept {
     if (active) {
       try {
         record.text = buffer.str();
@@ -892,8 +959,8 @@ private:
     LogMessage& owner;
   };
 
-  static auto startRecord(LogLevel level, bool broadcast, const LogLocation& location)
-      -> LogRecord {
+  UTILS_LOGGER_COLD static auto
+      startRecord(LogLevel level, bool broadcast, const LogLocation& location) -> LogRecord {
     LogRecord record;
     record.level = level;
     record.broadcast = broadcast;
@@ -909,6 +976,34 @@ private:
     }
   }
 
+  UTILS_LOGGER_COLD auto appendLiteral(const char* text) -> LogMessage& {
+    if (!active) {
+      return *this;
+    }
+    const std::string_view view(text);
+    buffer << view;
+    templateText(view);
+    return maybeSpace();
+  }
+
+  /** Records the value that was just put out from before on, unless nothing was put out */
+  UTILS_LOGGER_COLD auto putValue(std::stringstream::pos_type before, LogValue value)
+      -> LogMessage& {
+    // what puts out nothing, like std::setprecision(), is no value
+    if (buffer.tellp() != before) {
+      templateValue(std::move(value));
+    }
+    return maybeSpace();
+  }
+
+  /** Records the value that was just put out from before on, as its text */
+  UTILS_LOGGER_COLD auto putValueAsText(std::stringstream::pos_type before) -> LogMessage& {
+    if (buffer.tellp() != before) {
+      templateValue(LogValue(buffer.str().substr(static_cast<std::size_t>(before))));
+    }
+    return maybeSpace();
+  }
+
   void templateValue(LogValue value) {
     if (nesting == 0) {
       record.messageTemplate += "{}";
@@ -917,7 +1012,7 @@ private:
   }
 
   template <typename T>
-  auto appendValue(const T& data) -> LogMessage& {
+  UTILS_LOGGER_COLD auto appendValue(const T& data) -> LogMessage& {
     if constexpr (std::is_invocable_r_v<LogMessage&, T, LogMessage&>) {
       return std::invoke(data, *this);
     } else if constexpr (std::is_same_v<T, std::string>) {
@@ -933,16 +1028,12 @@ private:
     } else if constexpr (CanOutput<T>::Value) {
       const auto before = buffer.tellp();
       buffer << data;
-      // what puts out nothing, like std::setprecision(), is no value
-      if (buffer.tellp() != before) {
-        if constexpr (std::is_arithmetic_v<T> || std::is_pointer_v<std::decay_t<T>> ||
-                      std::is_convertible_v<const T&, std::string_view>) {
-          templateValue(detail::toLogValue(data));
-        } else {
-          templateValue(LogValue{buffer.str().substr(static_cast<std::size_t>(before))});
-        }
+      if constexpr (std::is_arithmetic_v<T> || std::is_pointer_v<std::decay_t<T>> ||
+                    std::is_convertible_v<const T&, std::string_view>) {
+        return putValue(before, detail::toLogValue(data));
+      } else {
+        return putValueAsText(before);
       }
-      return maybeSpace();
     } else if constexpr (IsIterable<T>::Value) {
       {
         const Nesting nested(*this);
@@ -1073,25 +1164,31 @@ class Logger : public LogMessage {
     auto converted = detail::toLogValue(value);
     auto& state = detail::loggerState();
     const std::lock_guard<std::recursive_mutex> lock(state.mutex);
-    for (auto& entry : state.context) {
+    auto context = std::make_shared<std::vector<LogNamedValue>>(*state.context);
+    bool replaced = false;
+    for (auto& entry : *context) {
       if (entry.first == name) {
         entry.second = std::move(converted);
-        return;
+        replaced = true;
       }
     }
-    state.context.emplace_back(name, std::move(converted));
+    if (!replaced) {
+      context->emplace_back(name, std::move(converted));
+    }
+    state.context = std::move(context);
   }
 
   /** Removes the field set with setField() under name; nothing happens if there is none */
   static void removeField(const std::string& name) {
     auto& state = detail::loggerState();
     const std::lock_guard<std::recursive_mutex> lock(state.mutex);
-    for (auto it = state.context.begin(); it != state.context.end(); ++it) {
-      if (it->first == name) {
-        state.context.erase(it);
-        return;
+    auto context = std::make_shared<std::vector<LogNamedValue>>();
+    for (const auto& entry : *state.context) {
+      if (entry.first != name) {
+        context->push_back(entry);
       }
     }
+    state.context = std::move(context);
   }
 
   /**
@@ -1121,6 +1218,7 @@ class Logger : public LogMessage {
       static_cast<void>(std::fclose(state.jsonFile));
     }
     state.jsonFile = file;
+    state.jsonWriter = &detail::writeJsonLine;
     for (const auto& record : state.earlyRecords) {
       detail::writeJsonLine(state, record);
     }
