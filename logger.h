@@ -31,6 +31,8 @@
 #include <ostream>
 #include <signal.h>
 #include <sstream>
+// fileno() is POSIX, and only declared by the C header
+#include <stdio.h>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -301,6 +303,19 @@ struct LoggerState {
   std::vector<LogRecord> earlyRecords;
   /** Guarded by the mutex: how many messages earlyRecords keeps at most */
   std::size_t earlyLimit{1000};
+  /** Guarded by the mutex: called when the fields of setField() change, if set */
+  void (*contextChanged)(LoggerState&){nullptr};
+
+  // for the signal handler of utils/crash.h, which can neither take the lock nor allocate
+
+  /** Whether a fatal error is ending the program */
+  std::atomic<bool> ending{false};
+  /** The file descriptor of jsonFile; -1 without one */
+  std::atomic<int> jsonDescriptor{-1};
+  /** Whether a line is being written to jsonFile */
+  std::atomic<bool> jsonWriting{false};
+  /** How far local time is ahead of UTC, in seconds, as of the last message on the console */
+  std::atomic<long> utcOffset{0};
 };
 
 inline auto loggerState() -> LoggerState& {
@@ -457,9 +472,13 @@ inline auto shownOnConsole(const LogRecord& record) -> bool {
 }
 
 UTILS_LOGGER_COLD inline void writeToConsole(const LogRecord& record) {
+  const auto calendar = calendarTime(record.time.seconds, true);
+#ifndef _WIN32
+  loggerState().utcOffset.store(calendar.tm_gmtoff, std::memory_order_relaxed);
+#endif
   std::ostringstream line;
   // (spelled out, since not every C runtime understands %F or %T; e.g. msvcrt.dll does not)
-  line << formatTime("%Y-%m-%d %H:%M:%S", calendarTime(record.time.seconds, true)) << '.'
+  line << formatTime("%Y-%m-%d %H:%M:%S", calendar) << '.'
        << zeroPadded(record.time.nanoseconds / 1000000, 3) << ' ' << levelName(record.level) << ' ';
   if (record.rank >= 0) {
     line << record.rank;
@@ -655,8 +674,10 @@ inline void writeJsonLine(LoggerState& state, const LogRecord& record) {
     return;
   }
   const auto line = jsonLine(record, state.rank.load(std::memory_order_relaxed));
+  state.jsonWriting.store(true);
   static_cast<void>(std::fputs(line.c_str(), state.jsonFile));
   static_cast<void>(std::fflush(state.jsonFile));
+  state.jsonWriting.store(false);
 }
 
 /** Whether a message goes anywhere at all; if not, it need not be put together */
@@ -775,6 +796,7 @@ inline auto aborting() -> bool& {
  */
 [[noreturn]] UTILS_LOGGER_COLD inline void endProgram(const LogRecord& record) noexcept {
   auto& state = loggerState();
+  state.ending.store(true);
   if (!aborting()) {
     aborting() = true;
     try {
@@ -1176,6 +1198,9 @@ class Logger : public LogMessage {
       context->emplace_back(name, std::move(converted));
     }
     state.context = std::move(context);
+    if (state.contextChanged != nullptr) {
+      state.contextChanged(state);
+    }
   }
 
   /** Removes the field set with setField() under name; nothing happens if there is none */
@@ -1189,6 +1214,9 @@ class Logger : public LogMessage {
       }
     }
     state.context = std::move(context);
+    if (state.contextChanged != nullptr) {
+      state.contextChanged(state);
+    }
   }
 
   /**
@@ -1214,6 +1242,7 @@ class Logger : public LogMessage {
       return false;
     }
     const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    state.jsonDescriptor.store(-1);
     if (state.jsonFile != nullptr) {
       static_cast<void>(std::fclose(state.jsonFile));
     }
@@ -1226,6 +1255,9 @@ class Logger : public LogMessage {
     state.earlyRecords.shrink_to_fit();
     state.earlyLimit = 0;
     state.jsonLines.store(true, std::memory_order_relaxed);
+#ifndef _WIN32
+    state.jsonDescriptor.store(fileno(file));
+#endif
     return true;
   }
 
@@ -1234,6 +1266,7 @@ class Logger : public LogMessage {
     auto& state = detail::loggerState();
     const std::lock_guard<std::recursive_mutex> lock(state.mutex);
     state.jsonLines.store(false, std::memory_order_relaxed);
+    state.jsonDescriptor.store(-1);
     if (state.jsonFile != nullptr) {
       static_cast<void>(std::fclose(state.jsonFile));
       state.jsonFile = nullptr;
