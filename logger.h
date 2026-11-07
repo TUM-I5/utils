@@ -17,7 +17,9 @@
 #include <csignal>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <functional>
 #include <iostream>
@@ -26,10 +28,12 @@
 #include <ostream>
 #include <signal.h>
 #include <sstream>
-#include <stdlib.h>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 // backtraces are only available where execinfo.h is (e.g. glibc and macOS, but not Windows)
 #if __has_include(<execinfo.h>)
@@ -45,17 +49,14 @@
 #endif // NDEBUG
 #endif // LOG_LEVEL
 
-#ifndef LOG_ABORT
-#ifdef MPI_VERSION
-#define LOG_ABORT MPI_Abort(MPI_COMM_WORLD, 134)
-#else // MPI_VERSION
-#define LOG_ABORT abort()
-#endif // MPI_VERSION
-#endif // LOG_ABORT
+#ifdef LOG_ABORT
+#error                                                                                             \
+    "LOG_ABORT is not used anymore: set what ends the program with utils::Logger::setAbortHandler()"
+#endif
 
-#ifndef BACKTRACE_SIZE
-#define BACKTRACE_SIZE 50
-#endif // BACKTRACE_SIZE
+#ifdef BACKTRACE_SIZE
+#error "BACKTRACE_SIZE is not used anymore: set the depth with utils::Logger::setBacktraceDepth()"
+#endif
 
 #define UTILS_LOGGER_CONCAT_IMPL(a, b) a##b
 #define UTILS_LOGGER_CONCAT(a, b) UTILS_LOGGER_CONCAT_IMPL(a, b)
@@ -81,7 +82,7 @@ enum class LogLevel {
   Info,
   /** Something that may be wrong */
   Warning,
-  /** A fatal error, which ends the program */
+  /** An error; from logError() and logFatal(), a fatal one, which ends the program */
   Error
 };
 
@@ -103,6 +104,26 @@ struct LogRecord {
   std::string text;
 };
 
+/** Whether a fatal error raises SIGTRAP before it ends the program, to stop in a debugger */
+enum class LogTrap {
+  /** Never; the default */
+  Never,
+  /**
+   * If a tracer is attached to the process, as a debugger is; that can only be told on Linux.
+   * A tracer that is no debugger, such as strace, lets SIGTRAP end the process.
+   */
+  IfDebugger,
+  /** Always; without a debugger, SIGTRAP ends the process */
+  Always
+};
+
+/**
+ * What ends the program after a fatal error, given the record of the error
+ *
+ * It must not return; if it does, the program ends with std::abort().
+ */
+using LogAbortHandler = std::function<void(const LogRecord&)>;
+
 namespace detail {
 
 /** What all messages share: the settings of the logger, and the lock for handing messages on */
@@ -111,7 +132,11 @@ struct LoggerState {
   std::atomic<int> displayRank{0};
   std::atomic<bool> logAll{false};
   std::atomic<LogLevel> minimumLevel{LogLevel::Debug};
+  std::atomic<LogTrap> trap{LogTrap::Never};
+  std::atomic<int> backtraceDepth{50};
   std::mutex mutex;
+  /** Guarded by the mutex */
+  LogAbortHandler abortHandler;
 };
 
 inline auto loggerState() -> LoggerState& {
@@ -206,6 +231,100 @@ inline void dispatch(const LogRecord& record) noexcept {
   } catch (...) {
     // a message that cannot be handed on is lost; the program goes on
   }
+}
+
+/** Whether a debugger is attached to the process; false where that cannot be told */
+inline auto debuggerAttached() -> bool {
+#ifdef __linux__
+  std::FILE* status = std::fopen("/proc/self/status", "r");
+  if (status == nullptr) {
+    return false;
+  }
+  constexpr std::string_view Key = "TracerPid:";
+  char line[256];
+  bool attached = false;
+  while (std::fgets(line, sizeof(line), status) != nullptr) {
+    if (std::strncmp(line, Key.data(), Key.size()) == 0) {
+      attached = std::strtol(line + Key.size(), nullptr, 10) != 0;
+      break;
+    }
+  }
+  static_cast<void>(std::fclose(status));
+  return attached;
+#else
+  return false;
+#endif
+}
+
+inline void writeBacktrace(int depth) {
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
+  if (depth <= 0) {
+    return;
+  }
+  std::vector<void*> frames(static_cast<std::size_t>(depth));
+  const int count = backtrace(frames.data(), depth);
+  char** names = backtrace_symbols(frames.data(), count);
+
+  // Buffer output to avoid interlacing with other processes
+  std::string text = "Backtrace:\n";
+  for (int i = 0; i < count; ++i) {
+    text += names != nullptr ? names[i] : "?";
+    text += '\n';
+  }
+  std::free(static_cast<void*>(names));
+
+  std::cerr << text << std::flush;
+#else
+  static_cast<void>(depth);
+#endif
+}
+
+/** Whether this thread is ending the program because of a fatal error right now */
+inline auto aborting() -> bool& {
+  thread_local bool flag = false;
+  return flag;
+}
+
+/**
+ * Ends the program after the fatal error of record
+ *
+ * In order: the output is flushed, the backtrace written, SIGTRAP raised if set so, and the abort
+ * handler called; if there is none, or it returns, std::abort() ends the program.
+ */
+[[noreturn]] inline void endProgram(const LogRecord& record) noexcept {
+  auto& state = loggerState();
+  if (!aborting()) {
+    aborting() = true;
+    try {
+      std::cout.flush();
+      std::cerr.flush();
+      writeBacktrace(state.backtraceDepth.load(std::memory_order_relaxed));
+
+      const auto trap = state.trap.load(std::memory_order_relaxed);
+      // Windows has no SIGTRAP; and raising an unknown signal there would end up in the
+      // invalid parameter handler of the C runtime instead
+#if defined(SIGTRAP) && !defined(_WIN32)
+      if (trap == LogTrap::Always || (trap == LogTrap::IfDebugger && debuggerAttached())) {
+        static_cast<void>(std::raise(SIGTRAP));
+      }
+#else
+      static_cast<void>(trap);
+#endif
+
+      LogAbortHandler handler;
+      {
+        const std::lock_guard<std::mutex> lock(state.mutex);
+        handler = state.abortHandler;
+      }
+      if (handler) {
+        handler(record);
+      }
+    } catch (...) {
+      // the program ends below in any case
+    }
+  }
+  // a fatal error in the abort handler itself ends up here directly
+  std::abort();
 }
 
 } // namespace detail
@@ -334,6 +453,9 @@ class LogMessage {
 
   [[nodiscard]] auto level() const -> LogLevel { return record.level; }
 
+  /** The record of the message; complete after finish() */
+  [[nodiscard]] auto finishedRecord() const -> const LogRecord& { return record; }
+
   private:
   template <typename T, std::size_t Idx>
   static void printTuple(LogMessage& message, const T& data) {
@@ -370,39 +492,10 @@ class Logger : public LogMessage {
   auto operator=(const Logger&) -> Logger& = delete;
   auto operator=(Logger&&) -> Logger& = delete;
 
-  ~Logger() {
-    finish();
+  ~Logger() { finish(); }
 
-    if (level() == LogLevel::Error) {
-#ifdef UTILS_LOGGER_HAS_BACKTRACE
-      // Backtrace
-      if (BACKTRACE_SIZE > 0) {
-        void* frames[BACKTRACE_SIZE];
-        const int nptrs = backtrace(frames, BACKTRACE_SIZE);
-        char** strings = backtrace_symbols(frames, nptrs);
-
-        // Buffer output to avoid interlacing with other processes
-        std::stringstream outputBuffer;
-        outputBuffer << "Backtrace:" << '\n';
-        for (int i = 0; i < nptrs; i++) {
-          outputBuffer << strings[i] << '\n';
-        }
-        free(strings);
-
-        // Write backtrace to stderr
-        std::cerr << outputBuffer.str() << std::flush;
-      }
-#endif // UTILS_LOGGER_HAS_BACKTRACE
-
-      // Windows has no SIGTRAP; and raising an unknown signal there would end up in the
-      // invalid parameter handler of the C runtime instead
-#if defined(SIGTRAP) && !defined(_WIN32)
-      std::raise(SIGTRAP);
-#endif
-
-      LOG_ABORT;
-    }
-  }
+  using Trap = LogTrap;
+  using AbortHandler = LogAbortHandler;
 
   /** Sets the rank that later messages are made by */
   static void setRank(int rank) {
@@ -419,6 +512,50 @@ class Logger : public LogMessage {
   /** Sets the least severe level shown; errors are always shown */
   static void setLevel(LogLevel minimum) {
     detail::loggerState().minimumLevel.store(minimum, std::memory_order_relaxed);
+  }
+
+  /**
+   * Sets what ends the program after a fatal error, e.g. MPI_Abort() on the communicator the
+   * program runs on. An empty handler leaves it to std::abort().
+   *
+   * @return The handler set before
+   */
+  static auto setAbortHandler(AbortHandler handler) -> AbortHandler {
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::mutex> lock(state.mutex);
+    std::swap(handler, state.abortHandler);
+    return handler;
+  }
+  /** Sets whether a fatal error raises SIGTRAP first, to stop in a debugger; by default, never */
+  static void setTrap(Trap trap) {
+    detail::loggerState().trap.store(trap, std::memory_order_relaxed);
+  }
+  /** Sets how many frames the backtrace of a fatal error has; 0 for none */
+  static void setBacktraceDepth(int depth) {
+    detail::loggerState().backtraceDepth.store(depth, std::memory_order_relaxed);
+  }
+};
+
+/**
+ * A fatal error, which ends the program when it is complete, i.e. at the end of the statement that
+ * makes it
+ *
+ * The destructor does not return, and says so: code after a fatal error needs neither a return
+ * statement nor a call to std::abort(). As each FatalLogger has to end the program, there is no
+ * way to copy or move one.
+ */
+class FatalLogger : public LogMessage {
+  public:
+  explicit FatalLogger(bool broadcast) : LogMessage(LogLevel::Error, broadcast) {}
+
+  FatalLogger(const FatalLogger&) = delete;
+  FatalLogger(FatalLogger&&) = delete;
+  auto operator=(const FatalLogger&) -> FatalLogger& = delete;
+  auto operator=(FatalLogger&&) -> FatalLogger& = delete;
+
+  [[noreturn]] ~FatalLogger() {
+    finish();
+    detail::endProgram(finishedRecord());
   }
 };
 
@@ -501,7 +638,9 @@ constexpr auto compiledFrom(utils::LogLevel level) -> int {
 /** A message of Level, or a dummy where LOG_LEVEL leaves out messages of Level */
 template <utils::LogLevel Level>
 auto logAt(bool broadcast) {
-  if constexpr (LOG_LEVEL >= compiledFrom(Level)) {
+  if constexpr (Level == utils::LogLevel::Error) {
+    return utils::FatalLogger(broadcast);
+  } else if constexpr (LOG_LEVEL >= compiledFrom(Level)) {
     return utils::Logger(Level, broadcast);
   } else {
     return utils::NoLogger();
@@ -511,9 +650,18 @@ auto logAt(bool broadcast) {
 } // namespace utils_logger_detail
 
 /**
- * Create error message and exit
+ * Create a fatal error message, which ends the program
  *
- * @relates utils::Logger
+ * @relates utils::FatalLogger
+ */
+inline auto logFatal(bool broadcast = true) {
+  return utils_logger_detail::logAt<utils::LogLevel::Error>(broadcast);
+}
+
+/**
+ * Create error message and exit; the same as logFatal()
+ *
+ * @relates utils::FatalLogger
  */
 inline auto logError(bool broadcast = true) {
   return utils_logger_detail::logAt<utils::LogLevel::Error>(broadcast);

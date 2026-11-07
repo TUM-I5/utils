@@ -28,3 +28,10 @@ cxx_test( TestTimeUtils ${CMAKE_CURRENT_SOURCE_DIR}/timeutils.t.h )
 target_sources( TestLogger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/logger_level.cpp )
 set_source_files_properties( ${CMAKE_CURRENT_SOURCE_DIR}/logger_level.cpp
     PROPERTIES COMPILE_DEFINITIONS LOG_LEVEL=1 )
+
+# a function without a return statement after a fatal error, which has to compile without warning
+target_sources( TestLogger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/logger_noreturn.cpp )
+if( CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" )
+  set_source_files_properties( ${CMAKE_CURRENT_SOURCE_DIR}/logger_noreturn.cpp
+      PROPERTIES COMPILE_OPTIONS "-Werror=return-type" )
+endif()

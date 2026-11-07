@@ -9,6 +9,8 @@
 #define UTILS_TESTS_LOGGER_T_H_
 
 #include <csignal>
+#include <cstdio>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <regex>
@@ -104,6 +106,9 @@ auto runInChild(F&& function) -> Child {
 // Defined in logger_level.cpp, which is compiled with LOG_LEVEL=1.
 void logAtLevelOne();
 
+// Defined in logger_noreturn.cpp, which is compiled with -Werror=return-type.
+auto positiveOrFatal(int value) -> int;
+
 struct Streamable {
   int value;
 };
@@ -120,6 +125,10 @@ class TestLogger : public CxxTest::TestSuite {
     Logger::setRank(0);
     Logger::setDisplayRank(0);
     Logger::setLogAll(false);
+    Logger::setLevel(LogLevel::Debug);
+    Logger::setAbortHandler(nullptr);
+    Logger::setTrap(Logger::Trap::Never);
+    Logger::setBacktraceDepth(50);
   }
 
   void tearDown() override { setUp(); }
@@ -260,6 +269,114 @@ class TestLogger : public CxxTest::TestSuite {
     TS_ASSERT_EQUALS(there.out, std::string(""));
     TS_ASSERT_EQUALS(logger_test::withoutTime(there.err),
                      std::string(" warn 0 : warning at level 1 \n"));
+  }
+
+  static void testRuntimeLevel() {
+    Logger::setLevel(LogLevel::Warning);
+    const auto captured = logger_test::capture([] {
+      logDebug() << "hidden";
+      logInfo() << "hidden";
+      logWarning() << "shown";
+    });
+    TS_ASSERT_EQUALS(captured.out, std::string(""));
+    TS_ASSERT_EQUALS(logger_test::withoutTime(captured.err), std::string(" warn 0 : shown \n"));
+  }
+
+  static void testFatalErrorAborts() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const auto child = logger_test::runInChild([] { logFatal() << "fatal"; });
+    TS_ASSERT(WIFSIGNALED(child.status));
+    TS_ASSERT_EQUALS(WTERMSIG(child.status), SIGABRT);
+    TS_ASSERT_EQUALS(logger_test::withoutTime(child.err).rfind(" error 0 : fatal \n", 0), 0U);
+#endif
+  }
+
+  static void testAbortHandlerGetsTheRecord() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const auto child = logger_test::runInChild([] {
+      Logger::setAbortHandler([](const LogRecord& record) {
+        std::fprintf(stderr,
+                     "handler: [%s] %d\n",
+                     record.text.c_str(),
+                     static_cast<int>(record.level == LogLevel::Error));
+        static_cast<void>(std::fflush(stderr));
+        std::_Exit(42);
+      });
+      logError() << "the error" << 7;
+    });
+    TS_ASSERT(WIFEXITED(child.status));
+    TS_ASSERT_EQUALS(WEXITSTATUS(child.status), 42);
+    TS_ASSERT_DIFFERS(child.err.find("handler: [the error 7 ] 1\n"), std::string::npos);
+#endif
+  }
+
+  static void testAbortHandlerThatReturns() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const auto child = logger_test::runInChild([] {
+      Logger::setAbortHandler([](const LogRecord& /*record*/) {});
+      logError() << "the error";
+    });
+    TS_ASSERT(WIFSIGNALED(child.status));
+    TS_ASSERT_EQUALS(WTERMSIG(child.status), SIGABRT);
+#endif
+  }
+
+  static void testFatalErrorInTheAbortHandler() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const auto child = logger_test::runInChild([] {
+      Logger::setAbortHandler([](const LogRecord& /*record*/) { logError() << "in the handler"; });
+      logError() << "the error";
+    });
+    TS_ASSERT(WIFSIGNALED(child.status));
+    TS_ASSERT_EQUALS(WTERMSIG(child.status), SIGABRT);
+    TS_ASSERT_DIFFERS(child.err.find(" error 0 : in the handler \n"), std::string::npos);
+#endif
+  }
+
+  static void testTrap() {
+#if defined(UTILS_TESTS_HAVE_FORK) && defined(SIGTRAP)
+    const auto always = logger_test::runInChild([] {
+      Logger::setTrap(Logger::Trap::Always);
+      logError() << "the error";
+    });
+    TS_ASSERT(WIFSIGNALED(always.status));
+    TS_ASSERT_EQUALS(WTERMSIG(always.status), SIGTRAP);
+
+    const auto never = logger_test::runInChild([] {
+      Logger::setTrap(Logger::Trap::Never);
+      logError() << "the error";
+    });
+    TS_ASSERT(WIFSIGNALED(never.status));
+    TS_ASSERT_EQUALS(WTERMSIG(never.status), SIGABRT);
+#endif
+  }
+
+  static void testBacktraceDepth() {
+#ifdef UTILS_TESTS_HAVE_FORK
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
+    const auto with = logger_test::runInChild([] { logError() << "the error"; });
+    TS_ASSERT_DIFFERS(with.err.find("Backtrace:\n"), std::string::npos);
+#endif
+    const auto without = logger_test::runInChild([] {
+      Logger::setBacktraceDepth(0);
+      logError() << "the error";
+    });
+    TS_ASSERT_EQUALS(without.err.find("Backtrace:"), std::string::npos);
+#endif
+  }
+
+  static void testSetAbortHandlerReturnsThePrevious() {
+    static int calls = 0;
+    Logger::setAbortHandler([](const LogRecord& /*record*/) { ++calls; });
+    const auto previous = Logger::setAbortHandler(nullptr);
+    TS_ASSERT(static_cast<bool>(previous));
+    previous(LogRecord{});
+    TS_ASSERT_EQUALS(calls, 1);
+    TS_ASSERT(!static_cast<bool>(Logger::setAbortHandler(nullptr)));
+  }
+
+  static void testNoReturnAfterAFatalError() {
+    TS_ASSERT_EQUALS(logger_test::positiveOrFatal(3), 3);
   }
 
   static void testErrorEndsTheProcess() {
