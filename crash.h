@@ -61,11 +61,17 @@ struct LogSignal {
    * that sent the signal, if there is one, and the time (ISO 8601, UTC)
    */
   const char* json{"{}"};
+  /**
+   * Whether the signal is a request to stop (SIGTERM, SIGINT, SIGHUP), from
+   * catchTerminationSignals(), rather than a crash from catchSignals(); a request is not a fault of
+   * the program
+   */
+  bool termination{false};
 };
 
 /**
- * What the signal handler of catchSignals() calls after the report of a fatal signal, e.g. to mark
- * a status file as failed, or to end the other ranks
+ * What a signal handler of catchSignals() or catchTerminationSignals() calls after the report of
+ * the signal, e.g. to mark a status file, or to end the other ranks
  *
  * It runs in the signal handler, so it may only call functions that are async-signal-safe. If it
  * returns, the signal ends the program as it does by default.
@@ -74,9 +80,16 @@ using LogSignalHandler = void (*)(const LogSignal&);
 
 namespace detail {
 
-/** The signals that catchSignals() reports */
+/** The signals that catchSignals() reports as a crash */
 #ifdef UTILS_CRASH_SIGNALS
 constexpr std::array<int, 5> CrashSignals = {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT};
+/** The signals that catchTerminationSignals() reports as a request to stop */
+constexpr std::array<int, 3> TerminationSignals = {SIGTERM, SIGINT, SIGHUP};
+
+/** Whether number is a termination signal, which is reported as a request, not as a crash */
+inline auto isTermination(int number) -> bool {
+  return number == SIGTERM || number == SIGINT || number == SIGHUP;
+}
 #endif
 
 /** Text in a buffer of a fixed size, which a signal handler can put together; cut off when full */
@@ -194,6 +207,7 @@ class FixedText {
 /** What the signal handler uses, set up before it is installed */
 struct SignalState {
   std::atomic<LogSignalHandler> handler{nullptr};
+  std::atomic<LogSignalHandler> terminationHandler{nullptr};
   /** Whether a signal is being reported; it stays set, as the program ends after the report */
   std::atomic<bool> handling{false};
   /**
@@ -237,6 +251,12 @@ inline auto signalName(int number) -> SignalName {
     return {"SIGILL", "illegal instruction"};
   case SIGABRT:
     return {"SIGABRT", "abort"};
+  case SIGTERM:
+    return {"SIGTERM", "termination request"};
+  case SIGINT:
+    return {"SIGINT", "interrupt"};
+  case SIGHUP:
+    return {"SIGHUP", "hangup"};
   default:
     return {"unknown", "unknown signal"};
   }
@@ -459,19 +479,22 @@ inline void describeSignal(int number, const siginfo_t* info, const LogTime& tim
   json.append("\"}");
 }
 
-/** Writes the report of a signal to stderr, and to the JSON Lines file if there is one */
-inline void reportSignal(const LogTime& time) {
+/**
+ * Writes the report of a signal to stderr, and to the JSON Lines file if there is one; as a warning
+ * without a backtrace for a request to stop, as an error with one for a crash
+ */
+inline void reportSignal(const LogTime& time, bool warning) {
   auto& state = loggerState();
   auto& signals = signalState();
   const int rank = state.rank.load(std::memory_order_relaxed);
 
-  // the line of the console, as for an error, in local time
+  // the line of the console, as for a message of that level, in local time
   auto& line = signals.line;
   line.clear();
   line.appendCalendar(time.seconds + state.utcOffset.load(std::memory_order_relaxed), ' ');
   line.append(".");
   line.appendNumber(static_cast<std::uint64_t>(time.nanoseconds / 1000000), 3);
-  line.append(" error ");
+  line.append(warning ? " warn " : " error ");
   if (rank >= 0) {
     line.appendNumber(static_cast<std::uint64_t>(rank));
   } else {
@@ -480,11 +503,21 @@ inline void reportSignal(const LogTime& time) {
   line.append(" : ");
   line.append(signals.message.view());
   line.append(" \n");
-  writeAll(STDERR_FILENO, line.view());
+  // a crash shows on every rank, whether the console is enabled or not; a request to stop shows
+  // where a warning does, which is on the display rank unless all ranks log
+  const bool shown =
+      !warning || (state.console.load(std::memory_order_relaxed) &&
+                   (rank == -1 || rank == state.displayRank.load(std::memory_order_relaxed) ||
+                    state.logAll.load(std::memory_order_relaxed)));
+  if (shown) {
+    writeAll(STDERR_FILENO, line.view());
+  }
 
 #ifdef UTILS_LOGGER_HAS_BACKTRACE
-  const int depth = std::min(state.backtraceDepth.load(std::memory_order_relaxed),
-                             static_cast<int>(signals.frames.size()));
+  // a request to stop is not a fault of the program, so it gets no backtrace
+  const int depth = warning ? 0
+                            : std::min(state.backtraceDepth.load(std::memory_order_relaxed),
+                                       static_cast<int>(signals.frames.size()));
   if (depth > 0) {
     // backtrace() was called once before, so that it does not load the unwinder (and allocate) now
     const int count = backtrace(signals.frames.data(), depth);
@@ -507,7 +540,7 @@ inline void reportSignal(const LogTime& time) {
     iso.append("Z");
     line.append(R"({"time":")");
     line.append(iso.view());
-    line.append(R"(","level":"error","rank":)");
+    line.append(warning ? R"(","level":"warning","rank":)" : R"(","level":"error","rank":)");
     if (rank >= 0) {
       line.appendNumber(static_cast<std::uint64_t>(rank));
     } else {
@@ -541,11 +574,16 @@ inline void flushOutput() {
 
 inline void onSignal(int number, siginfo_t* info, void* /*context*/) {
   auto& signals = signalState();
+  const bool termination = isTermination(number);
   const bool ending = loggerState().ending.load();
   if (signals.handling.exchange(true)) {
     // abort() while a signal is reported, e.g. from MPI_Abort() in the handler: that ends it
     if (number == SIGABRT) {
       endBySignal(number);
+    }
+    // a request to stop while a crash is reported: let the crash win, and end the program
+    if (termination) {
+      return;
     }
     // a fault of another thread at the same time: the program ends with the first report
     for (;;) {
@@ -562,18 +600,44 @@ inline void onSignal(int number, siginfo_t* info, void* /*context*/) {
   const LogTime time{static_cast<std::int64_t>(now.tv_sec), static_cast<std::int32_t>(now.tv_nsec)};
   describeSignal(number, info, time);
   flushOutput();
-  reportSignal(time);
+  reportSignal(time, termination);
 
-  const auto handler = signals.handler.load();
+  const auto handler = termination ? signals.terminationHandler.load() : signals.handler.load();
   if (handler != nullptr) {
     LogSignal signal;
     signal.number = number;
     signal.name = signalName(number).name;
     signal.message = signals.message.data();
     signal.json = signals.json.data();
+    signal.termination = termination;
     handler(signal);
   }
   endBySignal(number);
+}
+
+/** Installs onSignal for the signals in numbers, keeping any handler set already */
+inline void installSignals(const int* numbers, std::size_t count) {
+  struct sigaction action{};
+  action.sa_sigaction = &onSignal;
+  action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+  sigemptyset(&action.sa_mask);
+  // one report at a time per thread: block every signal reported while one is handled
+  for (const int number : CrashSignals) {
+    sigaddset(&action.sa_mask, number);
+  }
+  for (const int number : TerminationSignals) {
+    sigaddset(&action.sa_mask, number);
+  }
+  for (std::size_t i = 0; i < count; ++i) {
+    struct sigaction before{};
+    if (sigaction(numbers[i], nullptr, &before) != 0) {
+      continue;
+    }
+    const bool unset = (before.sa_flags & SA_SIGINFO) == 0 && before.sa_handler == SIG_DFL;
+    if (unset) {
+      sigaction(numbers[i], &action, nullptr);
+    }
+  }
 }
 
 /** Sets up what the signal handler needs, so that it need not allocate */
@@ -684,25 +748,37 @@ inline void catchSignals(LogSignalHandler handler = nullptr) {
   auto& signals = detail::signalState();
   signals.handler.store(handler);
   detail::prepareSignals();
+  detail::installSignals(detail::CrashSignals.data(), detail::CrashSignals.size());
+#else
+  static_cast<void>(handler);
+#endif
+}
 
-  struct sigaction action{};
-  action.sa_sigaction = &detail::onSignal;
-  action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-  // one report at a time per thread
-  sigemptyset(&action.sa_mask);
-  for (const int number : detail::CrashSignals) {
-    sigaddset(&action.sa_mask, number);
-  }
-  for (const int number : detail::CrashSignals) {
-    struct sigaction current{};
-    if (sigaction(number, nullptr, &current) != 0) {
-      continue;
-    }
-    const bool unset = (current.sa_flags & SA_SIGINFO) == 0 && current.sa_handler == SIG_DFL;
-    if (unset) {
-      sigaction(number, &action, nullptr);
-    }
-  }
+/**
+ * Reports a request to stop the way the logger reports a warning, and lets handler act on it:
+ * SIGTERM, SIGINT and SIGHUP
+ *
+ * A job scheduler sends SIGTERM when the time runs out or the job is cancelled, a terminal SIGINT
+ * on Ctrl-C and SIGHUP when it closes. Unlike a crash, this is not a fault of the program: the
+ * report is a warning, without a backtrace, in the JSON Lines file and on the console where a
+ * warning shows (the display rank, or every rank with Logger::setLogAll()). Then handler is
+ * called, if there is one, e.g. to mark a status file; after it, the signal ends the program as it
+ * does by default (the shell reports it as ended by the signal). handler must be
+ * async-signal-safe.
+ *
+ * Note that with Open MPI's mpirun, a rank that ends because another rank called MPI_Abort() gets
+ * SIGTERM as well, the same as when mpirun passes on a request from a scheduler; so a handler
+ * cannot tell the two apart from the signal alone.
+ *
+ * As catchSignals(), it keeps a handler set already, runs on a stack of its own, and does nothing
+ * without POSIX. Call it before the MPI library is initialized, as catchSignals().
+ */
+inline void catchTerminationSignals(LogSignalHandler handler = nullptr) {
+#ifdef UTILS_CRASH_SIGNALS
+  auto& signals = detail::signalState();
+  signals.terminationHandler.store(handler);
+  detail::prepareSignals();
+  detail::installSignals(detail::TerminationSignals.data(), detail::TerminationSignals.size());
 #else
   static_cast<void>(handler);
 #endif

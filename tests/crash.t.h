@@ -264,6 +264,131 @@ class TestCrash : public CxxTest::TestSuite {
 #endif
   }
 
+  void testTerminationRequest() {
+#ifdef UTILS_CRASH_SIGNALS
+    const auto child = crash_test::runInChild([] {
+      Logger::setRank(1);
+      Logger::setDisplayRank(1);
+      catchTerminationSignals();
+      raise(SIGTERM);
+    });
+    // ended by the signal, as its default action does, not through abort()
+    TS_ASSERT(crash_test::endedBy(child, SIGTERM));
+    // a warning, not an error, and no backtrace
+    TS_ASSERT(crash_test::contains(
+        child.output,
+        " warn 1 : The process received the signal SIGTERM (termination request). \n"));
+    TS_ASSERT(!crash_test::contains(child.output, "Backtrace:"));
+#endif
+  }
+
+  void testTerminationRequestShowsWhereWarningsShow() {
+#ifdef UTILS_CRASH_SIGNALS
+    // not on the console of a rank other than the display rank, as for any warning
+    const auto other = crash_test::runInChild([] {
+      Logger::setRank(1);
+      catchTerminationSignals();
+      raise(SIGTERM);
+    });
+    TS_ASSERT(crash_test::endedBy(other, SIGTERM));
+    TS_ASSERT(!crash_test::contains(other.output, "received the signal"));
+
+    // unless all ranks log
+    const auto all = crash_test::runInChild([] {
+      Logger::setRank(1);
+      Logger::setLogAll(true);
+      catchTerminationSignals();
+      raise(SIGTERM);
+    });
+    TS_ASSERT(
+        crash_test::contains(all.output, " warn 1 : The process received the signal SIGTERM"));
+
+    // and not without the console
+    const auto quiet = crash_test::runInChild([] {
+      Logger::enableConsole(false);
+      catchTerminationSignals();
+      raise(SIGTERM);
+    });
+    TS_ASSERT(crash_test::endedBy(quiet, SIGTERM));
+    TS_ASSERT(!crash_test::contains(quiet.output, "received the signal"));
+
+    // whereas a crash shows on every rank
+    const auto crash = crash_test::runInChild([] {
+      Logger::setRank(1);
+      catchSignals();
+      catchTerminationSignals();
+      crash_test::writeToNull();
+    });
+    TS_ASSERT(
+        crash_test::contains(crash.output, " error 1 : The process received the signal SIGSEGV"));
+#endif
+  }
+
+  void testInterruptAndHangup() {
+#ifdef UTILS_CRASH_SIGNALS
+    for (const int number : {SIGINT, SIGHUP}) {
+      const auto child = crash_test::runInChild([number] {
+        catchTerminationSignals();
+        raise(number);
+      });
+      TS_ASSERT(crash_test::endedBy(child, number));
+      TS_ASSERT(crash_test::contains(child.output, "received the signal"));
+    }
+#endif
+  }
+
+  void testTerminationHandlerGetsTheRequest() {
+#ifdef UTILS_CRASH_SIGNALS
+    const crash_test::TestFile file("handler");
+    const auto child = crash_test::runInChild([] {
+      catchTerminationSignals(&crash_test::writeSignal);
+      raise(SIGTERM);
+    });
+    TS_ASSERT(crash_test::exitedWith(child, 42));
+    const auto written = crash_test::readFile(file.name());
+    TS_ASSERT(crash_test::contains(written, "SIGTERM\nThe process received the signal SIGTERM"));
+    TS_ASSERT(crash_test::contains(
+        written,
+        R"({"message":"The process received the signal SIGTERM (termination request).",)"
+        R"("signal":"SIGTERM","time":")"));
+#endif
+  }
+
+  void testTerminationJsonLine() {
+#ifdef UTILS_CRASH_SIGNALS
+    const crash_test::TestFile file("lines");
+    const auto child = crash_test::runInChild([&file] {
+      Logger::enableJsonLines(file.name());
+      catchTerminationSignals();
+      raise(SIGTERM);
+    });
+    TS_ASSERT(crash_test::endedBy(child, SIGTERM));
+    const auto line = crash_test::lastLine(crash_test::readFile(file.name()));
+    TS_ASSERT(crash_test::contains(line, R"("level":"warning","rank":0,)"));
+    TS_ASSERT(crash_test::contains(
+        line,
+        R"("message":"The process received the signal SIGTERM (termination request).",)"
+        R"("template":"The process received the signal {} ({}).",)"
+        R"("arguments":["SIGTERM","termination request"],)"
+        R"("fields":{"signal":"SIGTERM"},)"));
+#endif
+  }
+
+  void testCrashAndTerminationTogether() {
+#ifdef UTILS_CRASH_SIGNALS
+    // both installed: a crash is still reported as an error with a backtrace
+    const auto child = crash_test::runInChild([] {
+      catchSignals();
+      catchTerminationSignals();
+      crash_test::writeToNull();
+    });
+    TS_ASSERT(crash_test::endedBy(child, SIGSEGV));
+    TS_ASSERT(
+        crash_test::contains(child.output, " error 0 : The process received the signal SIGSEGV"));
+    TS_ASSERT(crash_test::contains(child.output, "Backtrace:"));
+#endif
+  }
+
   void testSentSignal() {
 #ifdef UTILS_CRASH_SIGNALS
     const auto child = crash_test::runInChild([] {
