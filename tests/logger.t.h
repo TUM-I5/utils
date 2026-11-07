@@ -101,6 +101,9 @@ auto runInChild(F&& function) -> Child {
 }
 #endif
 
+// Defined in logger_level.cpp, which is compiled with LOG_LEVEL=1.
+void logAtLevelOne();
+
 struct Streamable {
   int value;
 };
@@ -240,6 +243,23 @@ class TestLogger : public CxxTest::TestSuite {
     Logger::setDisplayRank(0);
     const auto captured = logger_test::capture([] { logInfo() << "early"; });
     TS_ASSERT_EQUALS(logger_test::withoutTime(captured.out), std::string(" info - : early \n"));
+  }
+
+  static void testLevelsPerTranslationUnit() {
+    // both translation units use logDebug() and logInfo(), with different levels
+    const auto here = logger_test::capture([] {
+      logDebug() << "debug here";
+      logInfo() << "info here";
+    });
+#if LOG_LEVEL >= 3
+    TS_ASSERT_EQUALS(logger_test::withoutTime(here.out).rfind(" debug 0 : debug here \n", 0), 0U);
+#endif
+    TS_ASSERT_DIFFERS(here.out.find(" info 0 : info here \n"), std::string::npos);
+
+    const auto there = logger_test::capture([] { logger_test::logAtLevelOne(); });
+    TS_ASSERT_EQUALS(there.out, std::string(""));
+    TS_ASSERT_EQUALS(logger_test::withoutTime(there.err),
+                     std::string(" warn 0 : warning at level 1 \n"));
   }
 
   static void testErrorEndsTheProcess() {

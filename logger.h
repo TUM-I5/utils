@@ -52,10 +52,21 @@
 #define BACKTRACE_SIZE 50
 #endif // BACKTRACE_SIZE
 
+#define UTILS_LOGGER_CONCAT_IMPL(a, b) a##b
+#define UTILS_LOGGER_CONCAT(a, b) UTILS_LOGGER_CONCAT_IMPL(a, b)
+#define UTILS_LOGGER_LEVEL_NAMESPACE UTILS_LOGGER_CONCAT(utils_logger_v3_level, LOG_LEVEL)
+
 /**
  * A collection of useful utility functions
  */
 namespace utils {
+
+/**
+ * The logger's types and functions live in an inline namespace named after the version of their
+ * layout. A program can load libraries that embed different versions of this header; each version
+ * then has symbols of its own, rather than one version's code running on another's objects.
+ */
+inline namespace logger_v3 {
 
 /**
  * Handles debugging/logging output
@@ -352,9 +363,18 @@ class NoLogger {
   auto operator<<(Logger& (*func)(Logger&)) -> NoLogger& { return *this; }
 };
 
+} // namespace logger_v3
 } // namespace utils
 
 // Define global functions
+
+/**
+ * Which of the functions below are real loggers and which are dummies depends on LOG_LEVEL, which
+ * may differ between translation units. They live in an inline namespace named after the level, so
+ * that each level has symbols of its own, and the linker never merges the dummy of one translation
+ * unit with the logger of another.
+ */
+inline namespace UTILS_LOGGER_LEVEL_NAMESPACE {
 
 /**
  * Create error message and exit
@@ -419,11 +439,6 @@ inline auto logDebug(bool broadcast = false) -> utils::Logger {
 inline utils::NoLogger logDebug(bool broadcast = false) { return utils::NoLogger(); }
 #endif // LOG_LEVEL >= 3
 
-// Use for variables unused when compiling with NDEBUG
-#ifdef NDEBUG
-#define NDBG_UNUSED(x) ((void)x)
-#else // NDEBUG
-#define NDBG_UNUSED(x)
-#endif // NDEBUG
+} // namespace UTILS_LOGGER_LEVEL_NAMESPACE
 
 #endif // UTILS_LOGGER_H_
