@@ -24,6 +24,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <mutex>
 #include <ostream>
 #include <signal.h>
@@ -124,7 +125,24 @@ enum class LogTrap {
  */
 using LogAbortHandler = std::function<void(const LogRecord&)>;
 
+/**
+ * Gets every message of this process from the level it is registered with on, whatever rank shows
+ * it, e.g. to hand it on to another logging framework
+ *
+ * Callbacks are called one at a time, from whichever thread made the message, and they must copy
+ * what they keep of the record. A message that a callback makes itself goes to the console only.
+ */
+using LogCallback = std::function<void(const LogRecord&)>;
+
 namespace detail {
+
+struct CallbackEntry {
+  int id;
+  LogLevel minimum;
+  LogCallback callback;
+};
+
+using CallbackList = std::vector<CallbackEntry>;
 
 /** What all messages share: the settings of the logger, and the lock for handing messages on */
 struct LoggerState {
@@ -134,9 +152,17 @@ struct LoggerState {
   std::atomic<LogLevel> minimumLevel{LogLevel::Debug};
   std::atomic<LogTrap> trap{LogTrap::Never};
   std::atomic<int> backtraceDepth{50};
-  std::mutex mutex;
+  std::atomic<bool> console{true};
+  std::atomic<bool> anyCallback{false};
+  /** Recursive, so that callbacks may change the settings */
+  std::recursive_mutex mutex;
   /** Guarded by the mutex */
   LogAbortHandler abortHandler;
+  /** Guarded by the mutex; replaced rather than changed, so that a dispatch can go on with its copy
+   */
+  std::shared_ptr<const CallbackList> callbacks{std::make_shared<const CallbackList>()};
+  /** Guarded by the mutex */
+  int nextCallbackId{1};
 };
 
 inline auto loggerState() -> LoggerState& {
@@ -213,9 +239,23 @@ inline void writeToConsole(const LogRecord& record) {
   }
 }
 
+/** Whether a message goes anywhere at all; if not, it need not be put together */
+inline auto wanted(const LogRecord& record) -> bool {
+  const auto& state = loggerState();
+  if (record.level == LogLevel::Error) {
+    return true;
+  }
+  if (record.level < state.minimumLevel.load(std::memory_order_relaxed)) {
+    return false;
+  }
+  return state.anyCallback.load(std::memory_order_relaxed) ||
+         (state.console.load(std::memory_order_relaxed) && shownOnConsole(record));
+}
+
 /** Hands a finished message on to where messages go */
 inline void dispatch(const LogRecord& record) noexcept {
   try {
+    auto& state = loggerState();
     if (dispatching()) {
       // made while handing on another message: write it right away, without waiting for the lock
       if (shownOnConsole(record)) {
@@ -223,10 +263,20 @@ inline void dispatch(const LogRecord& record) noexcept {
       }
       return;
     }
-    const std::lock_guard<std::mutex> lock(loggerState().mutex);
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
     const DispatchScope scope;
-    if (shownOnConsole(record)) {
+    if (state.console.load(std::memory_order_relaxed) && shownOnConsole(record)) {
       writeToConsole(record);
+    }
+    const auto callbacks = state.callbacks;
+    for (const auto& entry : *callbacks) {
+      if (record.level >= entry.minimum) {
+        try {
+          entry.callback(record);
+        } catch (...) {
+          // a callback that fails does not keep the others from the message
+        }
+      }
     }
   } catch (...) {
     // a message that cannot be handed on is lost; the program goes on
@@ -313,7 +363,7 @@ inline auto aborting() -> bool& {
 
       LogAbortHandler handler;
       {
-        const std::lock_guard<std::mutex> lock(state.mutex);
+        const std::lock_guard<std::recursive_mutex> lock(state.mutex);
         handler = state.abortHandler;
       }
       if (handler) {
@@ -426,16 +476,8 @@ class LogMessage {
    * @param level How severe the message is
    * @param broadcast Whether every rank shows the message, and not only the display rank
    */
-  LogMessage(LogLevel level, bool broadcast) {
-    const auto& state = detail::loggerState();
-    record.level = level;
-    record.broadcast = broadcast;
-    record.rank = state.rank.load(std::memory_order_relaxed);
-    record.time = detail::now();
-    active =
-        level == LogLevel::Error || (level >= state.minimumLevel.load(std::memory_order_relaxed) &&
-                                     detail::shownOnConsole(record));
-  }
+  LogMessage(LogLevel level, bool broadcast)
+      : record(startRecord(level, broadcast)), active(detail::wanted(record)) {}
 
   ~LogMessage() = default;
 
@@ -457,6 +499,15 @@ class LogMessage {
   [[nodiscard]] auto finishedRecord() const -> const LogRecord& { return record; }
 
   private:
+  static auto startRecord(LogLevel level, bool broadcast) -> LogRecord {
+    LogRecord record;
+    record.level = level;
+    record.broadcast = broadcast;
+    record.rank = detail::loggerState().rank.load(std::memory_order_relaxed);
+    record.time = detail::now();
+    return record;
+  }
+
   template <typename T, std::size_t Idx>
   static void printTuple(LogMessage& message, const T& data) {
     if constexpr (Idx < std::tuple_size_v<T>) {
@@ -522,7 +573,7 @@ class Logger : public LogMessage {
    */
   static auto setAbortHandler(AbortHandler handler) -> AbortHandler {
     auto& state = detail::loggerState();
-    const std::lock_guard<std::mutex> lock(state.mutex);
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
     std::swap(handler, state.abortHandler);
     return handler;
   }
@@ -533,6 +584,43 @@ class Logger : public LogMessage {
   /** Sets how many frames the backtrace of a fatal error has; 0 for none */
   static void setBacktraceDepth(int depth) {
     detail::loggerState().backtraceDepth.store(depth, std::memory_order_relaxed);
+  }
+
+  using Callback = LogCallback;
+
+  /** Sets whether messages go to the console, e.g. not when another framework shows them */
+  static void enableConsole(bool enable) {
+    detail::loggerState().console.store(enable, std::memory_order_relaxed);
+  }
+
+  /**
+   * Registers a callback, which gets every message of this process from minimum on
+   *
+   * @return The id to remove the callback with
+   */
+  static auto addCallback(Callback callback, LogLevel minimum = LogLevel::Debug) -> int {
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    auto callbacks = std::make_shared<detail::CallbackList>(*state.callbacks);
+    const int id = state.nextCallbackId++;
+    callbacks->push_back({id, minimum, std::move(callback)});
+    state.callbacks = std::move(callbacks);
+    state.anyCallback.store(true, std::memory_order_relaxed);
+    return id;
+  }
+
+  /** Removes the callback registered with id; nothing happens if there is none */
+  static void removeCallback(int id) {
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    auto callbacks = std::make_shared<detail::CallbackList>();
+    for (const auto& entry : *state.callbacks) {
+      if (entry.id != id) {
+        callbacks->push_back(entry);
+      }
+    }
+    state.anyCallback.store(!callbacks->empty(), std::memory_order_relaxed);
+    state.callbacks = std::move(callbacks);
   }
 };
 

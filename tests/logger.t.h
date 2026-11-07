@@ -15,6 +15,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -109,6 +110,24 @@ void logAtLevelOne();
 // Defined in logger_noreturn.cpp, which is compiled with -Werror=return-type.
 auto positiveOrFatal(int value) -> int;
 
+// Keeps what a callback gets, for as long as it exists.
+class Collector {
+  public:
+  explicit Collector(LogLevel minimum = LogLevel::Debug)
+      : id(Logger::addCallback([this](const LogRecord& record) { records.push_back(record); },
+                               minimum)) {}
+  ~Collector() { Logger::removeCallback(id); }
+  Collector(const Collector&) = delete;
+  Collector(Collector&&) = delete;
+  auto operator=(const Collector&) -> Collector& = delete;
+  auto operator=(Collector&&) -> Collector& = delete;
+
+  std::vector<LogRecord> records;
+
+  private:
+  int id;
+};
+
 struct Streamable {
   int value;
 };
@@ -129,6 +148,7 @@ class TestLogger : public CxxTest::TestSuite {
     Logger::setAbortHandler(nullptr);
     Logger::setTrap(Logger::Trap::Never);
     Logger::setBacktraceDepth(50);
+    Logger::enableConsole(true);
   }
 
   void tearDown() override { setUp(); }
@@ -280,6 +300,128 @@ class TestLogger : public CxxTest::TestSuite {
     });
     TS_ASSERT_EQUALS(captured.out, std::string(""));
     TS_ASSERT_EQUALS(logger_test::withoutTime(captured.err), std::string(" warn 0 : shown \n"));
+  }
+
+  static void testCallbackGetsRecords() {
+    logger_test::Collector collector;
+    const auto captured = logger_test::capture([] {
+      logInfo() << "a" << 1;
+      logWarning(true) << "w";
+    });
+    TS_ASSERT_EQUALS(collector.records.size(), 2U);
+    if (collector.records.size() == 2) {
+      TS_ASSERT_EQUALS(collector.records[0].level, LogLevel::Info);
+      TS_ASSERT_EQUALS(collector.records[0].text, std::string("a 1 "));
+      TS_ASSERT_EQUALS(collector.records[0].rank, 0);
+      TS_ASSERT(!collector.records[0].broadcast);
+      TS_ASSERT_EQUALS(collector.records[1].level, LogLevel::Warning);
+      TS_ASSERT(collector.records[1].broadcast);
+    }
+    // the console shows the messages as well
+    TS_ASSERT_EQUALS(logger_test::withoutTime(captured.out), std::string(" info 0 : a 1 \n"));
+  }
+
+  static void testCallbackMinimumLevel() {
+    const logger_test::Collector collector(LogLevel::Warning);
+    const auto captured = logger_test::capture([] {
+      logInfo() << "info";
+      logWarning() << "warning";
+    });
+    TS_ASSERT_EQUALS(collector.records.size(), 1U);
+    TS_ASSERT_EQUALS(collector.records.at(0).level, LogLevel::Warning);
+  }
+
+  static void testCallbackSeesMessagesOfAllRanks() {
+    Logger::setRank(1);
+    const logger_test::Collector collector;
+    const auto captured = logger_test::capture([] { logInfo() << "not on this console"; });
+    TS_ASSERT_EQUALS(captured.out, std::string(""));
+    TS_ASSERT_EQUALS(collector.records.size(), 1U);
+    TS_ASSERT_EQUALS(collector.records.at(0).rank, 1);
+  }
+
+  static void testRemoveCallback() {
+    static int calls = 0;
+    const int id = Logger::addCallback([](const LogRecord& /*record*/) { ++calls; });
+    const auto first = logger_test::capture([] { logInfo() << "counted"; });
+    Logger::removeCallback(id);
+    const auto second = logger_test::capture([] { logInfo() << "not counted"; });
+    TS_ASSERT_EQUALS(calls, 1);
+    // removing it again does nothing
+    Logger::removeCallback(id);
+  }
+
+  static void testConsoleOff() {
+    Logger::enableConsole(false);
+    const logger_test::Collector collector;
+    const auto captured = logger_test::capture([] {
+      logInfo() << "info";
+      logWarning() << "warning";
+    });
+    TS_ASSERT_EQUALS(captured.out, std::string(""));
+    TS_ASSERT_EQUALS(captured.err, std::string(""));
+    TS_ASSERT_EQUALS(collector.records.size(), 2U);
+  }
+
+  static void testThrowingCallback() {
+    const int id =
+        Logger::addCallback([](const LogRecord& /*record*/) { throw std::runtime_error("no"); });
+    const logger_test::Collector collector;
+    const auto captured = logger_test::capture([] { logInfo() << "goes on"; });
+    Logger::removeCallback(id);
+    TS_ASSERT_EQUALS(collector.records.size(), 1U);
+  }
+
+  static void testCallbackThatLogs() {
+    const int id = Logger::addCallback([](const LogRecord& record) {
+      if (record.text == "outer ") {
+        logInfo() << "from the callback";
+      }
+    });
+    const logger_test::Collector collector;
+    const auto captured = logger_test::capture([] { logInfo() << "outer"; });
+    Logger::removeCallback(id);
+    TS_ASSERT_DIFFERS(captured.out.find(" info 0 : outer \n"), std::string::npos);
+    TS_ASSERT_DIFFERS(captured.out.find(" info 0 : from the callback \n"), std::string::npos);
+    // the message of the callback goes to the console only
+    TS_ASSERT_EQUALS(collector.records.size(), 1U);
+  }
+
+  static void testCallbackThatRemovesItself() {
+    static int id = 0;
+    static int calls = 0;
+    id = Logger::addCallback([](const LogRecord& /*record*/) {
+      ++calls;
+      Logger::removeCallback(id);
+    });
+    const auto captured = logger_test::capture([] {
+      logInfo() << "first";
+      logInfo() << "second";
+    });
+    TS_ASSERT_EQUALS(calls, 1);
+  }
+
+  static void testFatalErrorGoesToCallbacksFirst() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const auto child = logger_test::runInChild([] {
+      Logger::addCallback([](const LogRecord& record) {
+        std::fprintf(stderr, "callback: %s\n", record.text.c_str());
+      });
+      Logger::setAbortHandler([](const LogRecord& /*record*/) {
+        std::fprintf(stderr, "handler\n");
+        static_cast<void>(std::fflush(stderr));
+        std::_Exit(5);
+      });
+      logError() << "the error";
+    });
+    TS_ASSERT(WIFEXITED(child.status));
+    TS_ASSERT_EQUALS(WEXITSTATUS(child.status), 5);
+    const auto callback = child.err.find("callback: the error \n");
+    const auto handler = child.err.find("handler\n");
+    TS_ASSERT_DIFFERS(callback, std::string::npos);
+    TS_ASSERT_DIFFERS(handler, std::string::npos);
+    TS_ASSERT_LESS_THAN(callback, handler);
+#endif
   }
 
   static void testFatalErrorAborts() {
