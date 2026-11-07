@@ -11,7 +11,9 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
+#include <cmath>
 #include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <regex>
@@ -148,6 +150,39 @@ auto recordOf(F&& function) -> LogRecord {
   std::forward<F>(function)();
   Logger::enableConsole(true);
   return collector.records.size() == 1 ? collector.records.front() : LogRecord{};
+}
+
+// The lines of a file.
+inline auto readLines(const std::string& path) -> std::vector<std::string> {
+  std::ifstream file(path);
+  std::vector<std::string> lines;
+  std::string line;
+  while (std::getline(file, line)) {
+    lines.push_back(line);
+  }
+  return lines;
+}
+
+// A file for a test: removed if it is there already, and again at the end of the test.
+class TestFile {
+  public:
+  explicit TestFile(const std::string& name) : path("logger_test_" + name + ".jsonl") { remove(); }
+  ~TestFile() { remove(); }
+  TestFile(const TestFile&) = delete;
+  TestFile(TestFile&&) = delete;
+  auto operator=(const TestFile&) -> TestFile& = delete;
+  auto operator=(TestFile&&) -> TestFile& = delete;
+
+  [[nodiscard]] auto name() const -> const std::string& { return path; }
+
+  private:
+  void remove() const { static_cast<void>(std::remove(path.c_str())); }
+
+  std::string path;
+};
+
+inline auto contains(const std::string& text, const std::string& part) -> bool {
+  return text.find(part) != std::string::npos;
 }
 
 struct Streamable {
@@ -557,6 +592,133 @@ class TestLogger : public CxxTest::TestSuite {
     TS_ASSERT_EQUALS(location.line, line);
     TS_ASSERT(std::string(location.file).find("logger.t.h") != std::string::npos);
     TS_ASSERT(std::string(location.function).find("testLocation") != std::string::npos);
+  }
+
+  static void testJsonLines() {
+    const logger_test::TestFile file("lines");
+    const auto& path = file.name();
+    Logger::keepEarlyRecords(0);
+    TS_ASSERT(Logger::enableJsonLines(path));
+    Logger::setField("run", std::string("abc"));
+    const auto captured = logger_test::capture([] {
+      logInfo() << "The mesh has" << utils::field("cells", 1234) << "cells.";
+      logWarning() << "quote \" backslash \\ newline\n tab\t";
+      logInfo() << 2.5 << 0.1 << 1e300 << std::nan("") << -1.0 / 0.0 << std::vector<int>{1, 2};
+    });
+    Logger::removeField("run");
+    Logger::disableJsonLines();
+
+    const auto lines = logger_test::readLines(path);
+    TS_ASSERT_EQUALS(lines.size(), 3U);
+    if (lines.size() != 3) {
+      return;
+    }
+    const std::regex time(
+        "^\\{\"time\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z\",");
+    TS_ASSERT(std::regex_search(lines[0], time));
+    TS_ASSERT(logger_test::contains(
+        lines[0],
+        ",\"level\":\"info\",\"rank\":0,\"run\":\"abc\",\"message\":\"The mesh has 1234 "
+        "cells.\",\"template\":\"The mesh has {} cells.\",\"arguments\":[1234],\"fields\":{"
+        "\"cells\":1234},\"source\":{\"file\":\""));
+    TS_ASSERT(logger_test::contains(lines[0], "logger.t.h\",\"line\":"));
+    TS_ASSERT(logger_test::contains(lines[0], ",\"function\":\"operator()\"}}"));
+    TS_ASSERT(logger_test::contains(lines[1], "\"level\":\"warning\""));
+    TS_ASSERT(logger_test::contains(lines[1],
+                                    "\"message\":\"quote \\\" backslash \\\\ newline\\n tab\\t\""));
+    TS_ASSERT(logger_test::contains(lines[2],
+                                    "\"arguments\":[2.5,0.1,1e+300,\"NaN\",\"-Infinity\",[1,2]]"));
+  }
+
+  static void testJsonLinesOnlyOnTheDisplayRank() {
+    const logger_test::TestFile file("rank");
+    const auto& path = file.name();
+    Logger::setRank(1);
+    TS_ASSERT(!Logger::enableJsonLines(path));
+    const std::ifstream opened(path);
+    TS_ASSERT(!opened.good());
+  }
+
+  static void testJsonLinesAppend() {
+    const logger_test::TestFile file("append");
+    const auto& path = file.name();
+    const auto captured = logger_test::capture([&path] {
+      Logger::enableJsonLines(path);
+      logInfo() << "first";
+      Logger::disableJsonLines();
+      Logger::enableJsonLines(path);
+      logInfo() << "second";
+      Logger::disableJsonLines();
+    });
+    const auto lines = logger_test::readLines(path);
+    TS_ASSERT_EQUALS(lines.size(), 2U);
+  }
+
+  static void testJsonLinesWithoutConsole() {
+    const logger_test::TestFile file("noconsole");
+    const auto& path = file.name();
+    Logger::enableConsole(false);
+    Logger::enableJsonLines(path);
+    const auto captured = logger_test::capture([] { logInfo() << "only in the file"; });
+    Logger::disableJsonLines();
+    TS_ASSERT_EQUALS(captured.out, std::string(""));
+    const auto lines = logger_test::readLines(path);
+    TS_ASSERT_EQUALS(lines.size(), 1U);
+    TS_ASSERT(logger_test::contains(lines.at(0), "\"message\":\"only in the file\""));
+  }
+
+  static void testEarlyRecords() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const logger_test::TestFile file("early");
+    const auto& path = file.name();
+    const auto child = logger_test::runInChild([&path] {
+      Logger::disableJsonLines();
+      Logger::keepEarlyRecords(0);
+      Logger::keepEarlyRecords(10);
+      Logger::setRank(-1);
+      logInfo() << "early";
+      Logger::setRank(0);
+      Logger::enableJsonLines(path);
+      logInfo() << "late";
+      Logger::disableJsonLines();
+    });
+    TS_ASSERT(WIFEXITED(child.status));
+    const auto lines = logger_test::readLines(path);
+    TS_ASSERT_EQUALS(lines.size(), 2U);
+    if (lines.size() == 2) {
+      TS_ASSERT(logger_test::contains(lines[0], "\"rank\":0,\"message\":\"early\""));
+      TS_ASSERT(logger_test::contains(lines[1], "\"message\":\"late\""));
+    }
+#endif
+  }
+
+  static void testFatalErrorInJsonLines() {
+#ifdef UTILS_TESTS_HAVE_FORK
+    const logger_test::TestFile file("fatal");
+    const auto& path = file.name();
+    const auto child = logger_test::runInChild([&path] {
+      Logger::enableJsonLines(path);
+      Logger::setAbortHandler([](const LogRecord& /*record*/) { std::_Exit(0); });
+      logError() << "fatal end";
+    });
+    TS_ASSERT(WIFEXITED(child.status));
+    const auto lines = logger_test::readLines(path);
+    TS_ASSERT_EQUALS(lines.size(), 1U);
+    if (lines.size() == 1) {
+      TS_ASSERT(logger_test::contains(lines[0], "\"level\":\"error\""));
+      TS_ASSERT(logger_test::contains(lines[0], "\"message\":\"fatal end\""));
+    }
+#endif
+  }
+
+  static void testReservedFieldNames() {
+    const auto captured = logger_test::capture([] { Logger::setField("message", 1); });
+    TS_ASSERT_EQUALS(
+        logger_test::withoutTime(captured.err),
+        std::string(" warn 0 : The field \"message\" is not set: the JSON lines have a key of that "
+                    "name. \n"));
+    const auto record = logger_test::recordOf([] { logInfo() << "x"; });
+    TS_ASSERT(record.context.empty());
   }
 
   static void testFatalErrorAborts() {

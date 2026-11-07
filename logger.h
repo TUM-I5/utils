@@ -12,8 +12,10 @@
 #include "utils/stringutils.h"
 #include "utils/timeutils.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <csignal>
 #include <cstddef>
 #include <cstdint>
@@ -24,6 +26,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <locale>
 #include <memory>
 #include <mutex>
 #include <ostream>
@@ -258,6 +261,14 @@ struct LoggerState {
   int nextCallbackId{1};
   /** Guarded by the mutex */
   std::vector<LogNamedValue> context;
+  /** Whether a JSON Lines file is open */
+  std::atomic<bool> jsonLines{false};
+  /** Guarded by the mutex */
+  std::FILE* jsonFile{nullptr};
+  /** Guarded by the mutex: the first messages, kept until a JSON Lines file is opened */
+  std::vector<LogRecord> earlyRecords;
+  /** Guarded by the mutex: how many messages earlyRecords keeps at most */
+  std::size_t earlyLimit{1000};
 };
 
 inline auto loggerState() -> LoggerState& {
@@ -397,6 +408,188 @@ inline void writeToConsole(const LogRecord& record) {
   }
 }
 
+/** The keys of a JSON line, which the fields set with Logger::setField() must not take */
+constexpr std::array<std::string_view, 8> JsonKeys = {
+    "time", "level", "rank", "message", "template", "arguments", "fields", "source"};
+
+inline void appendJsonString(std::string& json, std::string_view text) {
+  json += '"';
+  for (const char character : text) {
+    switch (character) {
+    case '"':
+      json += "\\\"";
+      break;
+    case '\\':
+      json += "\\\\";
+      break;
+    case '\n':
+      json += "\\n";
+      break;
+    case '\r':
+      json += "\\r";
+      break;
+    case '\t':
+      json += "\\t";
+      break;
+    default:
+      if (static_cast<unsigned char>(character) < 0x20) {
+        constexpr std::string_view Hex = "0123456789abcdef";
+        const auto code = static_cast<unsigned char>(character);
+        json += "\\u00";
+        json += Hex[code / 16];
+        json += Hex[code % 16];
+      } else {
+        json += character;
+      }
+    }
+  }
+  json += '"';
+}
+
+/** The value with the given significant digits, in the classic locale whatever the global one is */
+inline auto formatNumber(double value, int digits) -> std::string {
+  std::ostringstream stream;
+  stream.imbue(std::locale::classic());
+  stream.precision(digits);
+  stream << value;
+  return stream.str();
+}
+
+inline auto parseNumber(const std::string& text) -> double {
+  std::istringstream stream(text);
+  stream.imbue(std::locale::classic());
+  double value = 0;
+  stream >> value;
+  return value;
+}
+
+/** The shorter of 15 and 17 significant digits that gives the value back */
+inline void appendJsonNumber(std::string& json, double value) {
+  if (std::isnan(value)) {
+    json += R"("NaN")";
+    return;
+  }
+  if (std::isinf(value)) {
+    json += value > 0 ? R"("Infinity")" : R"("-Infinity")";
+    return;
+  }
+  auto text = formatNumber(value, 15);
+  if (parseNumber(text) != value) {
+    text = formatNumber(value, 17);
+  }
+  json += text;
+}
+
+inline void appendJsonValue(std::string& json, const LogValue& value) {
+  std::visit(
+      [&json](const auto& held) {
+        using Held = std::decay_t<decltype(held)>;
+        if constexpr (std::is_same_v<Held, std::monostate>) {
+          json += "null";
+        } else if constexpr (std::is_same_v<Held, bool>) {
+          json += held ? "true" : "false";
+        } else if constexpr (std::is_same_v<Held, std::int64_t> ||
+                             std::is_same_v<Held, std::uint64_t>) {
+          json += std::to_string(held);
+        } else if constexpr (std::is_same_v<Held, double>) {
+          appendJsonNumber(json, held);
+        } else if constexpr (std::is_same_v<Held, std::string>) {
+          appendJsonString(json, held);
+        } else {
+          json += '[';
+          for (std::size_t i = 0; i < held.size(); ++i) {
+            if (i > 0) {
+              json += ',';
+            }
+            appendJsonValue(json, held[i]);
+          }
+          json += ']';
+        }
+      },
+      value.value);
+}
+
+inline auto jsonLevelName(LogLevel level) -> const char* {
+  return level == LogLevel::Warning ? "warning" : levelName(level);
+}
+
+/** The time as ISO 8601 in UTC, to the microsecond */
+inline auto jsonTime(const LogTime& time) -> std::string {
+  const auto seconds = static_cast<time_t>(time.seconds);
+  std::tm utc{};
+#ifdef _WIN32
+  gmtime_s(&utc, &seconds);
+#else
+  gmtime_r(&seconds, &utc);
+#endif
+  std::array<char, 32> date{};
+  const auto length = std::strftime(date.data(), date.size(), "%Y-%m-%dT%H:%M:%S", &utc);
+  const auto microseconds = std::to_string(time.nanoseconds / 1000);
+  return std::string(date.data(), length) + "." + std::string(6 - microseconds.size(), '0') +
+         microseconds + "Z";
+}
+
+/** A record as one line of JSON; rank is the rank to write for a record made before it was known */
+inline auto jsonLine(const LogRecord& record, int rank) -> std::string {
+  std::string json = "{\"time\":";
+  appendJsonString(json, jsonTime(record.time));
+  json += ",\"level\":";
+  appendJsonString(json, jsonLevelName(record.level));
+  json += ",\"rank\":";
+  const int recordRank = record.rank >= 0 ? record.rank : rank;
+  json += recordRank >= 0 ? std::to_string(recordRank) : std::string("null");
+  for (const auto& [name, value] : record.context) {
+    json += ',';
+    appendJsonString(json, name);
+    json += ':';
+    appendJsonValue(json, value);
+  }
+  json += ",\"message\":";
+  appendJsonString(json, record.message());
+  json += ",\"template\":";
+  appendJsonString(json, record.messageTemplate);
+  json += ",\"arguments\":[";
+  for (std::size_t i = 0; i < record.arguments.size(); ++i) {
+    if (i > 0) {
+      json += ',';
+    }
+    appendJsonValue(json, record.arguments[i]);
+  }
+  json += "],\"fields\":{";
+  for (std::size_t i = 0; i < record.fields.size(); ++i) {
+    if (i > 0) {
+      json += ',';
+    }
+    appendJsonString(json, record.fields[i].first);
+    json += ':';
+    appendJsonValue(json, record.fields[i].second);
+  }
+  json += R"(},"source":{"file":)";
+  appendJsonString(json, record.location.file);
+  json += ",\"line\":";
+  json += std::to_string(record.location.line);
+  json += ",\"function\":";
+  appendJsonString(json, record.location.function);
+  json += "}}\n";
+  return json;
+}
+
+/** Whether the JSON Lines file of this rank takes the message, if there is one */
+inline auto forJsonLines(const LogRecord& record) -> bool {
+  return record.rank == -1 ||
+         record.rank == loggerState().displayRank.load(std::memory_order_relaxed);
+}
+
+/** Writes the record to the JSON Lines file; the caller holds the lock */
+inline void writeJsonLine(LoggerState& state, const LogRecord& record) {
+  if (state.jsonFile == nullptr) {
+    return;
+  }
+  const auto line = jsonLine(record, state.rank.load(std::memory_order_relaxed));
+  static_cast<void>(std::fputs(line.c_str(), state.jsonFile));
+  static_cast<void>(std::fflush(state.jsonFile));
+}
+
 /** Whether a message goes anywhere at all; if not, it need not be put together */
 inline auto wanted(const LogRecord& record) -> bool {
   const auto& state = loggerState();
@@ -407,7 +600,8 @@ inline auto wanted(const LogRecord& record) -> bool {
     return false;
   }
   return state.anyCallback.load(std::memory_order_relaxed) ||
-         (state.console.load(std::memory_order_relaxed) && shownOnConsole(record));
+         (state.console.load(std::memory_order_relaxed) && shownOnConsole(record)) ||
+         (state.jsonLines.load(std::memory_order_relaxed) && forJsonLines(record));
 }
 
 /** Hands a finished message on to where messages go */
@@ -426,6 +620,13 @@ inline void dispatch(LogRecord& record) noexcept {
     record.context = state.context;
     if (state.console.load(std::memory_order_relaxed) && shownOnConsole(record)) {
       writeToConsole(record);
+    }
+    if (forJsonLines(record)) {
+      if (state.jsonFile != nullptr) {
+        writeJsonLine(state, record);
+      } else if (state.earlyRecords.size() < state.earlyLimit) {
+        state.earlyRecords.push_back(record);
+      }
     }
     const auto callbacks = state.callbacks;
     for (const auto& entry : *callbacks) {
@@ -862,6 +1063,13 @@ class Logger : public LogMessage {
    */
   template <typename T>
   static void setField(const std::string& name, const T& value) {
+    for (const auto key : detail::JsonKeys) {
+      if (name == key) {
+        Logger(LogLevel::Warning, false)
+            << "The field" << name << "is not set: the JSON lines have a key of that name.";
+        return;
+      }
+    }
     auto converted = detail::toLogValue(value);
     auto& state = detail::loggerState();
     const std::lock_guard<std::recursive_mutex> lock(state.mutex);
@@ -883,6 +1091,68 @@ class Logger : public LogMessage {
         state.context.erase(it);
         return;
       }
+    }
+  }
+
+  /**
+   * Writes the messages of the display rank to path as JSON Lines, one object per message, from now
+   * on; the file is appended to. The first messages of the program (see keepEarlyRecords()) are
+   * written first, as long as no file was opened before.
+   *
+   * Each line has the keys time (ISO 8601, UTC), level, rank, the fields set with setField(),
+   * message, template, arguments, fields and source (file, line, function).
+   *
+   * @return Whether this rank writes the file; only the display rank does, and only if the file
+   *  can be opened
+   */
+  static auto enableJsonLines(const std::string& path) -> bool {
+    auto& state = detail::loggerState();
+    const int rank = state.rank.load(std::memory_order_relaxed);
+    if (rank != -1 && rank != state.displayRank.load(std::memory_order_relaxed)) {
+      return false;
+    }
+    std::FILE* file = std::fopen(path.c_str(), "a");
+    if (file == nullptr) {
+      Logger(LogLevel::Warning, true) << "Could not open the log file" << path;
+      return false;
+    }
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    if (state.jsonFile != nullptr) {
+      static_cast<void>(std::fclose(state.jsonFile));
+    }
+    state.jsonFile = file;
+    for (const auto& record : state.earlyRecords) {
+      detail::writeJsonLine(state, record);
+    }
+    state.earlyRecords.clear();
+    state.earlyRecords.shrink_to_fit();
+    state.earlyLimit = 0;
+    state.jsonLines.store(true, std::memory_order_relaxed);
+    return true;
+  }
+
+  /** Closes the JSON Lines file, if there is one */
+  static void disableJsonLines() {
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    state.jsonLines.store(false, std::memory_order_relaxed);
+    if (state.jsonFile != nullptr) {
+      static_cast<void>(std::fclose(state.jsonFile));
+      state.jsonFile = nullptr;
+    }
+  }
+
+  /**
+   * Keeps the next count messages for a JSON Lines file opened later; 1000 from the start of the
+   * program on, until a file is opened. 0 drops what is kept.
+   */
+  static void keepEarlyRecords(std::size_t count) {
+    auto& state = detail::loggerState();
+    const std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    state.earlyLimit = state.earlyRecords.size() + count;
+    if (count == 0) {
+      state.earlyRecords.clear();
+      state.earlyRecords.shrink_to_fit();
     }
   }
 
