@@ -16,6 +16,7 @@ endfunction( cxx_test )
 
 # Add tests
 cxx_test( TestArgs ${CMAKE_CURRENT_SOURCE_DIR}/args.t.h )
+cxx_test( TestCrash ${CMAKE_CURRENT_SOURCE_DIR}/crash.t.h )
 cxx_test( TestEnv ${CMAKE_CURRENT_SOURCE_DIR}/env.t.h )
 cxx_test( TestLogger ${CMAKE_CURRENT_SOURCE_DIR}/logger.t.h )
 cxx_test( TestMathUtils ${CMAKE_CURRENT_SOURCE_DIR}/mathutils.t.h )
@@ -23,3 +24,15 @@ cxx_test( TestPath ${CMAKE_CURRENT_SOURCE_DIR}/path.t.h )
 cxx_test( TestProgress ${CMAKE_CURRENT_SOURCE_DIR}/progress.t.h )
 cxx_test( TestStringUtils ${CMAKE_CURRENT_SOURCE_DIR}/stringutils.t.h )
 cxx_test( TestTimeUtils ${CMAKE_CURRENT_SOURCE_DIR}/timeutils.t.h )
+
+# a translation unit at another log level than the test itself, in the same program
+target_sources( TestLogger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/logger_level.cpp )
+set_source_files_properties( ${CMAKE_CURRENT_SOURCE_DIR}/logger_level.cpp
+    PROPERTIES COMPILE_DEFINITIONS LOG_LEVEL=1 )
+
+# a function without a return statement after a fatal error, which has to compile without warning
+target_sources( TestLogger PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/logger_noreturn.cpp )
+if( CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" )
+  set_source_files_properties( ${CMAKE_CURRENT_SOURCE_DIR}/logger_noreturn.cpp
+      PROPERTIES COMPILE_OPTIONS "-Werror=return-type" )
+endif()
