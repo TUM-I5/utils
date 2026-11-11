@@ -146,6 +146,29 @@ inline void writeSignal(const LogSignal& signal) {
   _exit(42);
 }
 
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
+// The frame that the unwinders of the tests take, at an address of no code.
+inline auto unwoundFrame() -> void* { return reinterpret_cast<void*>(0xfeed0); }
+
+// An unwinder that takes a frame, and faults then.
+inline auto faultingUnwinder(void** frames, int depth) -> int {
+  if (depth > 0) {
+    frames[0] = unwoundFrame();
+  }
+  writeToNull();
+  return 1;
+}
+
+// An unwinder that takes a frame, and aborts then, as the one of libgcc does on unwind information
+// that it cannot make sense of.
+inline auto abortingUnwinder(void** frames, int depth) -> int {
+  if (depth > 0) {
+    frames[0] = unwoundFrame();
+  }
+  std::abort();
+}
+#endif
+
 inline void throwFrom() { throw std::runtime_error("the reason"); }
 
 inline void throwIntFrom() { throw 42; }
@@ -236,6 +259,34 @@ class TestCrash : public CxxTest::TestSuite {
         R"("arguments":["SIGSEGV","segmentation fault: address not mapped","0x0"],)"
         R"("fields":{"signal":"SIGSEGV","address":"0x0"},)"
         R"("source":{"file":"","line":0,"function":""}})"));
+#endif
+  }
+
+  void testFaultOfTheUnwinder() {
+#if defined(UTILS_CRASH_SIGNALS) && defined(UTILS_LOGGER_HAS_BACKTRACE)
+    // the backtrace ends with the frame taken before, and the report goes on: the JSON line, and
+    // the handler, which ends the child
+    for (const auto unwinder : {&crash_test::faultingUnwinder, &crash_test::abortingUnwinder}) {
+      const crash_test::TestFile handlerFile("handler");
+      const crash_test::TestFile linesFile("lines");
+      const auto child = crash_test::runInChild([unwinder, &linesFile] {
+        Logger::enableJsonLines(linesFile.name());
+        catchSignals(&crash_test::writeSignal);
+        detail::signalState().unwinder.store(unwinder);
+        crash_test::writeToNull();
+      });
+      TS_ASSERT(crash_test::exitedWith(child, 42));
+      // (the frame in the format of the system, e.g. "[0xfeed0]" with glibc)
+      const auto heading = child.output.find("Backtrace:\n");
+      const auto frame = child.output.find("feed0", heading);
+      const auto cut = child.output.find("(cut off: the unwinder faulted)\n", frame);
+      TS_ASSERT(heading != std::string::npos && frame != std::string::npos &&
+                cut != std::string::npos);
+      TS_ASSERT(crash_test::contains(crash_test::lastLine(crash_test::readFile(linesFile.name())),
+                                     R"("fields":{"signal":"SIGSEGV","address":"0x0"},)"));
+      TS_ASSERT(crash_test::contains(crash_test::readFile(handlerFile.name()),
+                                     "SIGSEGV\nThe process received the signal SIGSEGV"));
+    }
 #endif
   }
 

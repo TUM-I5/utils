@@ -28,6 +28,8 @@
 #include <csignal>
 #include <cstdio>
 #include <ctime>
+#include <pthread.h>
+#include <setjmp.h>
 #include <signal.h>
 // POSIX functions, which only the C headers declare
 #include <stdio.h>
@@ -204,6 +206,14 @@ class FixedText {
   std::size_t size{0};
 };
 
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
+/** What takes a backtrace: fills frames, at most depth of them, and returns how many it took */
+using Unwinder = int (*)(void** frames, int depth);
+
+/** The unwinder of the system, backtrace() */
+inline auto systemUnwinder(void** frames, int depth) -> int { return backtrace(frames, depth); }
+#endif
+
 /** What the signal handler uses, set up before it is installed */
 struct SignalState {
   std::atomic<LogSignalHandler> handler{nullptr};
@@ -223,6 +233,17 @@ struct SignalState {
   FixedText<2048> json;
   FixedText<4096> line;
   std::array<void*, 256> frames{};
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
+  /** What takes the backtrace of a crash; the tests put one in its place that faults */
+  std::atomic<Unwinder> unwinder{&systemUnwinder};
+#endif
+#ifdef UTILS_CRASH_SIGNALS
+  /** Whether the backtrace of a crash is being taken, and on which thread (see takeBacktrace()) */
+  std::atomic<bool> unwinding{false};
+  pthread_t unwindingThread{};
+  /** Where a fault of the unwinder returns to */
+  sigjmp_buf unwound{};
+#endif
 };
 
 inline auto signalState() -> SignalState& {
@@ -479,6 +500,60 @@ inline void describeSignal(int number, const siginfo_t* info, const LogTime& tim
   json.append("\"}");
 }
 
+#ifdef UTILS_LOGGER_HAS_BACKTRACE
+/** The backtrace of a crash, in the frames of the signal state */
+struct Backtrace {
+  /** How many frames the unwinder took */
+  int count{0};
+  /** Whether the unwinder faulted after those */
+  bool cut{false};
+};
+
+/** Lets the unwinder fill in the frames of the signal state, at most depth of them */
+inline auto unwind(int depth) -> int {
+  auto& signals = signalState();
+  signals.unwindingThread = pthread_self();
+  signals.unwinding.store(true);
+  // a fault of the unwinder, or its abort(), comes to the handler only if its signal is not
+  // blocked; else, the process ends at once
+  sigset_t crashes;
+  sigemptyset(&crashes);
+  for (const int number : CrashSignals) {
+    sigaddset(&crashes, number);
+  }
+  pthread_sigmask(SIG_UNBLOCK, &crashes, nullptr);
+  // backtrace() was called once before, so that it does not load the unwinder (and allocate) now
+  const int count = signals.unwinder.load()(signals.frames.data(), depth);
+  pthread_sigmask(SIG_BLOCK, &crashes, nullptr);
+  signals.unwinding.store(false);
+  return count;
+}
+
+/**
+ * Takes the backtrace of a crash, at most depth frames
+ *
+ * Should the unwinder fault, e.g. on a stack that the crash corrupted, or on the frame of the
+ * signal where it cannot read that (QEMU's LoongArch), the fault comes to onSignal(), which jumps
+ * back here: then the backtrace is what the unwinder found before.
+ */
+inline auto takeBacktrace(int depth) -> Backtrace {
+  auto& signals = signalState();
+  // the unwinder fills in one frame after the other; the first one left empty ends those it found
+  signals.frames.fill(nullptr);
+  // (volatile, as the jump back restores what the registers held at sigsetjmp())
+  const volatile int limit = depth;
+  if (sigsetjmp(signals.unwound, 1) == 0) {
+    return {unwind(limit), false};
+  }
+  // the jump back, with the signal mask of before
+  auto& state = signalState();
+  state.unwinding.store(false);
+  const auto count =
+      std::find(state.frames.begin(), state.frames.end(), nullptr) - state.frames.begin();
+  return {static_cast<int>(count), true};
+}
+#endif
+
 /**
  * Writes the report of a signal to stderr, and to the JSON Lines file if there is one; as a warning
  * without a backtrace for a request to stop, as an error with one for a crash
@@ -519,10 +594,12 @@ inline void reportSignal(const LogTime& time, bool warning) {
                             : std::min(state.backtraceDepth.load(std::memory_order_relaxed),
                                        static_cast<int>(signals.frames.size()));
   if (depth > 0) {
-    // backtrace() was called once before, so that it does not load the unwinder (and allocate) now
-    const int count = backtrace(signals.frames.data(), depth);
+    const auto taken = takeBacktrace(depth);
     writeAll(STDERR_FILENO, "Backtrace:\n");
-    backtrace_symbols_fd(signals.frames.data(), count, STDERR_FILENO);
+    backtrace_symbols_fd(signals.frames.data(), taken.count, STDERR_FILENO);
+    if (taken.cut) {
+      writeAll(STDERR_FILENO, "(cut off: the unwinder faulted)\n");
+    }
   }
 #endif
 
@@ -577,6 +654,11 @@ inline void onSignal(int number, siginfo_t* info, void* /*context*/) {
   const bool termination = isTermination(number);
   const bool ending = loggerState().ending.load();
   if (signals.handling.exchange(true)) {
+    // a fault of the unwinder, or its abort(), while it takes the backtrace of the report: back to
+    // the report, without the rest of the backtrace (takeBacktrace())
+    if (signals.unwinding.load() && pthread_equal(signals.unwindingThread, pthread_self()) != 0) {
+      siglongjmp(signals.unwound, 1);
+    }
     // abort() while a signal is reported, e.g. from MPI_Abort() in the handler: that ends it
     if (number == SIGABRT) {
       endBySignal(number);
@@ -735,6 +817,10 @@ inline auto exceptionMessage(const std::exception_ptr& exception) -> std::string
  * if there is one; after it, the signal ends the program as it does by default. SIGABRT from the
  * end of a fatal error is not reported again. Callbacks get no message: they cannot be called from
  * a signal handler.
+ *
+ * Should the unwinder fault while it takes the backtrace, e.g. on a stack that the crash corrupted,
+ * or where it cannot read the frame of the signal (QEMU's LoongArch), the backtrace ends with the
+ * frames it found before, and the report goes on.
  *
  * A signal that has a handler already keeps it, e.g. one of a sanitizer. The MPI library may set
  * handlers when it is initialized, for the signals that have none yet; so call this before. The
