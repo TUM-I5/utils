@@ -1033,9 +1033,20 @@ private:
     }
   }
 
+  /**
+   * Whether data of type T is a manipulator, such as utils::space: a function, or a pointer to
+   * one, that takes the message and returns it. Of a class, it is not asked whether it can be
+   * called with a message: that would instantiate its call operators with the message, which some
+   * cannot take, e.g. those of an Eigen matrix (with Clang, its index views fail to compile then).
+   */
+  template <typename T>
+  static constexpr bool IsManipulator =
+      std::conjunction_v<std::is_function<std::remove_pointer_t<T>>,
+                         std::is_invocable_r<LogMessage&, T, LogMessage&>>;
+
   template <typename T>
   UTILS_LOGGER_COLD auto appendValue(const T& data) -> LogMessage& {
-    if constexpr (std::is_invocable_r_v<LogMessage&, T, LogMessage&>) {
+    if constexpr (IsManipulator<T>) {
       return std::invoke(data, *this);
     } else if constexpr (std::is_same_v<T, std::string>) {
       buffer << '"' << data << '"';
