@@ -202,6 +202,25 @@ inline auto operator<<(std::ostream& stream, const Streamable& streamable) -> st
   return stream << "Streamable(" << streamable.value << ")";
 }
 
+// What a call of an Indexable gives: it holds the index, which a message cannot be.
+template <typename Index>
+struct Indexed {
+  Index index;
+};
+
+// A class with a call operator for any argument, as the index operators of an Eigen matrix: called
+// with a message, it does not compile.
+struct Indexable {
+  template <typename Index>
+  auto operator()(const Index& index) const {
+    return Indexed<Index>{index};
+  }
+};
+
+inline auto operator<<(std::ostream& stream, const Indexable& /*indexable*/) -> std::ostream& {
+  return stream << "Indexable";
+}
+
 } // namespace logger_test
 
 class TestLogger : public CxxTest::TestSuite {
@@ -553,6 +572,20 @@ class TestLogger : public CxxTest::TestSuite {
         [] { logInfo() << std::vector<std::vector<int>>{{1}, {2, 3}} << "end"; });
     TS_ASSERT_EQUALS(record.messageTemplate, std::string("{} end"));
     TS_ASSERT_EQUALS(record.arguments.size(), 1U);
+  }
+
+  static void testCallableClassIsAValue() {
+    // a class is no manipulator, whatever it can be called with
+    const auto record = logger_test::recordOf([] { logInfo() << logger_test::Indexable{}; });
+    TS_ASSERT_EQUALS(record.messageTemplate, std::string("{}"));
+    TS_ASSERT(logger_test::holds(record.arguments.at(0), std::string("Indexable")));
+  }
+
+  static void testManipulatorThroughAPointer() {
+    auto* const manipulator = &utils::nospace;
+    const auto captured =
+        logger_test::capture([manipulator] { logInfo() << manipulator << "a" << "b"; });
+    TS_ASSERT_EQUALS(logger_test::withoutTime(captured.out), std::string(" info 0 : ab\n"));
   }
 
   static void testStreamableValueAsText() {
